@@ -395,7 +395,7 @@
     });
   }
   function animarKPIs(){
-    const total=dealsData.length, comp=compData.length;
+    const total=dealsData.length, comp=compData.filter(d=>nRetailCount(d)>=2).length;
     const deals=dealsData.filter(d=>!esMayorista(d.retailer)&&d.es_deal).length;
     const maxSave=compData.reduce((m,d)=>Math.max(m,Number(d.ahorro_pct)||0),0);
     animCount('k-prod', total, v=>String(Math.round(v)));
@@ -824,8 +824,10 @@
     });
   }
 
+  // nº de tiendas retail que tienen el producto (para excluir "1 retail" del comparador)
+  const nRetailCount = d => [d.precio_xtra,d.precio_rey,d.precio_99,d.precio_carnes,d.precio_baru,d.precio_mach].filter(p=>Number(p)>0).length;
   function render(){
-    let comp = aplicaFiltros(compData);
+    let comp = aplicaFiltros(compData).filter(d=>nRetailCount(d)>=2);  // solo comparables (2+ tiendas)
     if(filtroGana) comp = comp.filter(d=>d.tienda_mas_barata===(tiendaNombre[filtroGana]||filtroGana));
     const fg = document.getElementById('filtro-gana');
     if(filtroGana){ fg.style.display='flex'; fg.innerHTML = `<span style="font-size:12px;color:var(--mut)">Mostrando productos donde gana</span> <span class="chip ${chipClass(filtroGana)}">${tiendaNombre[filtroGana]||filtroGana}</span> <button class="iconbtn" onclick="limpiarGana()" title="Quitar filtro">✕</button>`; }
