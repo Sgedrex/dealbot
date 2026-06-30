@@ -277,7 +277,7 @@
         <div class="onb-nav"><button class="onb-skip" onclick="onbIr(2)">← Atrás</button><button class="onb-next" onclick="onbFinalizar()">Crear mi panel →</button></div>
       </div>
       <div class="onb-step" id="onb-load">
-        <div class="onb-load"><div class="sp">🧠</div><div class="onb-q" style="margin-top:12px">Configurando tu panel…</div><div class="onb-sub">La IA está adaptando DealBot a tu negocio.</div></div>
+        <div class="onb-load"><div class="sp">🧠</div><div class="onb-q" style="margin-top:12px">Configurando tu panel…</div><div class="onb-sub">La IA está adaptando DealBot a tu negocio. Si pediste un producto nuevo, lo agregamos y buscamos precios en las tiendas (puede tardar ~30s).</div></div>
       </div>
       <div class="onb-step" id="onb-done">
         <div class="onb-logo">✅ ¡Listo!</div>
@@ -1255,11 +1255,19 @@
     document.getElementById('onb-res').innerHTML = html;
     onbPaso('onb-done');
   }
-  function onbEntrar(){
+  async function onbEntrar(){
     localStorage.setItem('db_onboarded','1');
     localStorage.setItem('db_perfil', JSON.stringify({ modo:onbCfg&&onbCfg.modo, marca:(onbCfg&&onbCfg.marca)||null }));
     document.getElementById('onb').classList.remove('open');
+    // si se agregaron categorías nuevas (scrapeo bajo demanda), recargar la lista + catbar
+    if(onbCfg && onbCfg.agregadas && onbCfg.agregadas.length){
+      const { data } = await sb.from("dealbot_categorias").select("slug,nombre,tiene_referencia,activo").eq("activo",true).order("orden");
+      CATS = data || [];
+      document.getElementById("catbar").innerHTML = CATS.map(c=>
+        `<div class="cat" data-c="${c.slug}" onclick="selCat('${c.slug}')"><span class="ci">${iconCat(c.slug)}</span>${c.nombre}</div>`).join("");
+    }
     if(onbCfg && onbCfg.categoria_principal && CATS.find(c=>c.slug===onbCfg.categoria_principal)) selCat(onbCfg.categoria_principal);
+    else if(CATS.length) selCat(CATS[0].slug);
     // si dio una marca, intentar prefiltrar el comparador por ella
     if(onbCfg && onbCfg.marca){
       setTimeout(()=>{
