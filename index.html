@@ -1305,7 +1305,7 @@
       const r = await fetch(CHAT_URL, {
         method:'POST',
         headers:{ 'content-type':'application/json', 'authorization':'Bearer '+SUPABASE_ANON, 'apikey':SUPABASE_ANON },
-        body: JSON.stringify({ pregunta: q, categoria: catActual ? catActual.slug : 'atun', modo: modoUsuario })
+        body: JSON.stringify({ pregunta: q, categoria: catActual ? catActual.slug : 'atun', modo: modoUsuario, marca: (()=>{ try{ return (JSON.parse(localStorage.getItem('db_perfil')||'{}').marca)||''; }catch(_e){ return ''; } })() })
       });
       const j = await r.json();
       load.classList.remove('load');

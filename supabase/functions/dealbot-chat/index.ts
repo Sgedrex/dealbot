@@ -35,6 +35,7 @@ Deno.serve(async (req: Request) => {
     const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const catActual = ((body.categoria ?? "").toString().toLowerCase().replace(/[^a-z_]/g, "").slice(0, 40));
     const modo = (body.modo ?? "").toString() === "negocio" ? "negocio" : "consumidor";
+    const marca = (body.marca ?? "").toString().slice(0, 80);
 
     const h = { apikey: SB_KEY, authorization: `Bearer ${SB_KEY}` };
     const [rankRes, compRes, mayRes] = await Promise.all([
@@ -66,11 +67,26 @@ Deno.serve(async (req: Request) => {
       datos += `\n## Mayoristas (packs, tienda MsMega — no comparar por unidad con retail)\n${m}\n`;
     }
 
+    // productos de la marca del usuario (para analisis de posicionamiento en modo negocio)
+    let marcaCtx = "", marcaDatos = "";
+    if (marca) {
+      const generic = ["cafe", "atun", "arroz", "sardina", "sardinas", "vegetales", "enlatados", "aceite", "pasta", "de", "la", "el", "los", "las", "marca", "mi"];
+      const palabras = marca.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !generic.includes(w));
+      const term = palabras[0] || marca;
+      try {
+        const mr = await fetch(`${SB_URL}/rest/v1/dealbot_comparador?select=nombre,tienda_mas_barata,precio_xtra,precio_rey,precio_99,precio_carnes,precio_baru,precio_mach&nombre=ilike.*${encodeURIComponent(term)}*&limit=25`, { headers: h });
+        const filas = await mr.json().catch(() => []);
+        if (Array.isArray(filas) && filas.length) {
+          marcaDatos = `\n=== PRODUCTOS DE TU MARCA (${marca}) ===\n` + filas.map((c: any) => `- ${c.nombre}: ${precios(c)} | mas barato en ${c.tienda_mas_barata}`).join("\n");
+        }
+      } catch (_e) { /* ignore */ }
+      marcaCtx = `La marca o negocio del usuario es "${marca}". Cuando pregunte "donde estoy mas caro o barato", "como me posiciono", "mi marca" o similar, se refiere a ${marca}: usa los PRODUCTOS DE TU MARCA de abajo para analizar en que tiendas esta mas caro o mas barato frente a la competencia. NO le preguntes que marca vende, ya lo sabes. Si no hay productos de su marca en los datos, decilo claramente.`;
+    }
     const verCat = catActual ? `El usuario esta viendo la categoria "${CATN[catActual] || catActual}", pero podes responder de cualquiera.` : "";
     const tono = modo === "negocio"
       ? "PERFIL DEL USUARIO: tiene un negocio o marca. Responde como analista de inteligencia comercial: menciona competencia, ranking de tiendas, variacion y posicionamiento de la marca, y cierra con una conclusion ejecutiva accionable."
       : "PERFIL DEL USUARIO: es un consumidor que quiere ahorrar. Responde simple y cercano: di claramente donde comprar y cuanto ahorra, sin jerga tecnica (evita palabras como indice, ponderado o comparables).";
-    const system = `Sos el asistente de DealBot PA, plataforma de inteligencia de precios de supermercados de Panama. Tenes los datos de TODAS las categorias (atun, sardinas, vegetales enlatados, cafe, arroz) y de los mayoristas; responde sobre cualquiera de ellas. ${verCat} ${tono} Responde en espanol, breve y directo (maximo 4 frases), citando tiendas y precios reales. No inventes datos ni precios: si algo no esta en los datos, deci que no tenes ese producto registrado. Responde directo, sin mostrar tu razonamiento.\n\n=== DATOS DE PRECIOS ===${datos}`;
+    const system = `Sos el asistente de DealBot PA, plataforma de inteligencia de precios de supermercados de Panama. Tenes los datos de TODAS las categorias (atun, sardinas, vegetales enlatados, cafe, arroz) y de los mayoristas; responde sobre cualquiera de ellas. ${verCat} ${tono} ${marcaCtx} Responde en espanol, breve y directo (maximo 4 frases), citando tiendas y precios reales. No inventes datos ni precios: si algo no esta en los datos, deci que no tenes ese producto registrado. Responde directo, sin mostrar tu razonamiento.\n\n=== DATOS DE PRECIOS ===${datos}${marcaDatos}`;
 
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
