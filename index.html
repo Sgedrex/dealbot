@@ -199,6 +199,10 @@
   .bestopt .bo-v{font-size:17px;font-weight:800}
   .bestopt .bo-k{font-size:10px;opacity:.85;font-weight:600}
   .bestopt .bo-alt{font-size:11px;opacity:.92;margin-top:10px;border-top:1px solid rgba(255,255,255,.25);padding-top:8px}
+  /* simulador: chips de categorias a incluir */
+  .simcats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .simchip{border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;user-select:none;transition:.15s}
+  .simchip.on{border-color:var(--green);background:var(--greenbg);color:var(--green-d)}
   /* comparador VS: frase resumen */
   .vsfrase{background:var(--greenbg);color:var(--green-d);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px;text-align:center;font-weight:600;line-height:1.4}
   .altipo{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--mut);margin-left:4px}
@@ -456,8 +460,9 @@
     <div class="sheet">
       <button class="x" onclick="cerrar('ov-sim')">✕</button>
       <h2>🧮 Simulador de presupuesto</h2>
-      <div class="ph" style="font-size:11px;color:var(--mut);margin-bottom:10px">¿Cuánto rinde tu dinero en cada supermercado? (categoría actual, precio por unidad)</div>
+      <div class="ph" style="font-size:11px;color:var(--mut);margin-bottom:10px">¿Cuánto rinde tu dinero en cada supermercado? Elegí las categorías a incluir (precio por unidad).</div>
       <input id="sim-monto" type="number" min="1" placeholder="Tengo $…" value="50" oninput="simular()" style="width:100%;margin-bottom:10px" />
+      <div id="sim-cats" class="simcats"></div>
       <div id="sim-res"></div>
     </div>
   </div>
@@ -739,13 +744,33 @@
          <span>$${t.suma.toFixed(2)}</span></div>`).join("") : '';
   }
 
-  // ===== Simulador de presupuesto (P5) =====
+  // ===== Simulador de presupuesto (P5) — multi-categoría =====
   const TIENDAS_CAMPO = [['superxtra','precio_xtra'],['superrey','precio_rey'],['super99','precio_99'],['supercarnes','precio_carnes'],['superbaru','precio_baru'],['machetazo','precio_mach']];
-  function abrirSim(){ abrir('ov-sim'); simular(); }
+  let compAll = null; const simCats = new Set();
+  function abrirSim(){ abrir('ov-sim'); cargarSimYrender(); }
+  async function cargarSimYrender(){
+    if(!compAll){
+      document.getElementById('sim-res').innerHTML = '<div class="empty">Cargando catálogo de todas las categorías…</div>';
+      const { data } = await sb.from("dealbot_comparador").select("ean,categoria,precio_xtra,precio_rey,precio_99,precio_carnes,precio_baru,precio_mach");
+      compAll = data || [];
+    }
+    if(simCats.size===0) CATS.forEach(c=>simCats.add(c.slug));   // todas activas por defecto
+    pintarSimCats(); simular();
+  }
+  function pintarSimCats(){
+    document.getElementById('sim-cats').innerHTML = CATS.map(c=>
+      `<span class="simchip ${simCats.has(c.slug)?'on':''}" onclick="toggleSimCat('${c.slug}')">${iconCat(c.slug)} ${c.nombre}</span>`).join('');
+  }
+  function toggleSimCat(slug){
+    if(simCats.has(slug)){ if(simCats.size>1) simCats.delete(slug); }  // no permitir dejar 0
+    else simCats.add(slug);
+    pintarSimCats(); simular();
+  }
   function simular(){
     const monto = Number(document.getElementById('sim-monto').value)||0;
+    const fuente = (compAll||compData).filter(d=>simCats.size ? simCats.has(d.categoria) : true);
     const res = TIENDAS_CAMPO.map(([ret,campo])=>{
-      const precios = compData.map(d=>Number(d[campo])).filter(p=>p>0).sort((a,b)=>a-b);
+      const precios = fuente.map(d=>Number(d[campo])).filter(p=>p>0).sort((a,b)=>a-b);
       let suma=0,n=0;
       for(const p of precios){ if(suma+p<=monto){ suma+=p; n++; } }
       return { ret, n, suma };
