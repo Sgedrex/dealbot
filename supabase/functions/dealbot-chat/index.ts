@@ -34,6 +34,7 @@ Deno.serve(async (req: Request) => {
     const SB_URL = Deno.env.get("SUPABASE_URL")!;
     const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const catActual = ((body.categoria ?? "").toString().toLowerCase().replace(/[^a-z_]/g, "").slice(0, 40));
+    const modo = (body.modo ?? "").toString() === "negocio" ? "negocio" : "consumidor";
 
     const h = { apikey: SB_KEY, authorization: `Bearer ${SB_KEY}` };
     const [rankRes, compRes, mayRes] = await Promise.all([
@@ -66,7 +67,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const verCat = catActual ? `El usuario esta viendo la categoria "${CATN[catActual] || catActual}", pero podes responder de cualquiera.` : "";
-    const system = `Sos el asistente de DealBot PA, plataforma de inteligencia de precios de supermercados de Panama. Tenes los datos de TODAS las categorias (atun, sardinas, vegetales enlatados, cafe, arroz) y de los mayoristas; responde sobre cualquiera de ellas. ${verCat} Responde en espanol, breve y directo (maximo 4 frases), citando tiendas y precios reales. No inventes datos ni precios: si algo no esta en los datos, deci que no tenes ese producto registrado. Responde directo, sin mostrar tu razonamiento.\n\n=== DATOS DE PRECIOS ===${datos}`;
+    const tono = modo === "negocio"
+      ? "PERFIL DEL USUARIO: tiene un negocio o marca. Responde como analista de inteligencia comercial: menciona competencia, ranking de tiendas, variacion y posicionamiento de la marca, y cierra con una conclusion ejecutiva accionable."
+      : "PERFIL DEL USUARIO: es un consumidor que quiere ahorrar. Responde simple y cercano: di claramente donde comprar y cuanto ahorra, sin jerga tecnica (evita palabras como indice, ponderado o comparables).";
+    const system = `Sos el asistente de DealBot PA, plataforma de inteligencia de precios de supermercados de Panama. Tenes los datos de TODAS las categorias (atun, sardinas, vegetales enlatados, cafe, arroz) y de los mayoristas; responde sobre cualquiera de ellas. ${verCat} ${tono} Responde en espanol, breve y directo (maximo 4 frases), citando tiendas y precios reales. No inventes datos ni precios: si algo no esta en los datos, deci que no tenes ese producto registrado. Responde directo, sin mostrar tu razonamiento.\n\n=== DATOS DE PRECIOS ===${datos}`;
 
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

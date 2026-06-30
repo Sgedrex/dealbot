@@ -206,6 +206,14 @@
   /* comparador VS: frase resumen */
   .vsfrase{background:var(--greenbg);color:var(--green-d);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px;text-align:center;font-weight:600;line-height:1.4}
   .altipo{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--mut);margin-left:4px}
+  /* badge de modo (consumidor / negocio) */
+  .modobadge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--txt);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:pointer;box-shadow:var(--shadow);transition:.15s;white-space:nowrap}
+  .modobadge:hover{transform:translateY(-1px)}
+  body.modo-consumidor .modobadge{border-color:var(--green);color:var(--green-d)}
+  body.modo-negocio .modobadge{border-color:#2563eb;color:#2563eb}
+  /* enfasis por modo: ocultar lo demasiado tecnico al consumidor */
+  body.modo-consumidor .solo-negocio{display:none !important}
+  body.modo-negocio .solo-consumidor{display:none !important}
   /* modo ejecutivo */
   body.ejecutivo .tabs,body.ejecutivo .filtros,body.ejecutivo #view-comp,body.ejecutivo #view-deals,body.ejecutivo #view-may,body.ejecutivo .canasta-fab{display:none !important}
   body.ejecutivo #view-anal{display:block !important}
@@ -306,6 +314,7 @@
       <div class="sys on"><span class="dot"></span><div><div class="sl">Estado</div><div class="sv">Online</div></div></div>
       <div class="sys"><span class="sl">Última actualización</span><span class="sv" id="sys-last">—</span></div>
       <div class="sys"><span class="sl">Próxima</span><span class="sv" id="sys-next">—</span></div>
+      <button class="modobadge" id="modo-badge" onclick="toggleModo()" title="Cambiar entre modo consumidor y modo negocio">🛒 Modo consumidor</button>
       <button class="icontop" onclick="onbReset()" title="Reconfigurar mi panel (volver a la pantalla de inicio)">⚙️</button>
       <button class="icontop" id="btn-exec" onclick="toggleEjecutivo()" title="Vista ejecutiva (resumen en 1 minuto)">📊</button>
       <button class="icontop" id="btn-dark" onclick="toggleDark()" title="Cambiar tema claro/oscuro">🌙</button>
@@ -344,7 +353,7 @@
   <div class="tabs">
     <div class="tab active" data-v="comp" onclick="setView('comp')">🏪 Monitor de Precios</div>
     <div class="tab" data-v="deals" onclick="setView('deals')">📋 Catálogo retail</div>
-    <div class="tab" data-v="may" onclick="setView('may')">🏭 Mayoristas</div>
+    <div class="tab solo-negocio" data-v="may" onclick="setView('may')">🏭 Mayoristas</div>
     <div class="tab" data-v="anal" onclick="setView('anal')">📊 Insights</div>
     <div class="acciones">
       <button class="btn-upd" id="btn-upd" onclick="actualizar()">▶ Ejecutar monitoreo</button>
@@ -992,6 +1001,28 @@
     catArrows();
   }
   function catScroll(dir){ const b=document.getElementById('catbar'); if(b) b.scrollBy({left:dir*220,behavior:'smooth'}); }
+  // ===== Modo consumidor / negocio (la eleccion del onboarding cambia la experiencia) =====
+  let modoUsuario = 'consumidor';
+  const MODO_TXT = {
+    consumidor: { badge:'🛒 Modo consumidor', sub:'Encontrá dónde ahorrar en tus compras · Panamá',
+      kpis:{ 'k-prod':'Productos', 'k-match':'Para comparar', 'k-deals':'Ofertas de hoy', 'k-save':'Tu mayor ahorro' } },
+    negocio: { badge:'📊 Modo negocio', sub:'Monitoreá tu marca frente a la competencia · Panamá',
+      kpis:{ 'k-prod':'Productos monitoreados', 'k-match':'Comparables', 'k-deals':'Oportunidades activas', 'k-save':'Máximo ahorro' } }
+  };
+  function aplicarModo(m, persistir){
+    modoUsuario = (m==='negocio') ? 'negocio' : 'consumidor';
+    document.body.classList.toggle('modo-negocio', modoUsuario==='negocio');
+    document.body.classList.toggle('modo-consumidor', modoUsuario==='consumidor');
+    const t = MODO_TXT[modoUsuario];
+    const badge = document.getElementById('modo-badge'); if(badge) badge.textContent = t.badge;
+    const sub = document.getElementById('sub'); if(sub) sub.textContent = t.sub;
+    for(const id in t.kpis){ const el = document.getElementById(id)?.parentElement?.querySelector('.l'); if(el) el.textContent = t.kpis[id]; }
+    // si un consumidor estaba viendo Mayoristas (B2B), volver al Monitor
+    if(modoUsuario==='consumidor' && document.querySelector('.tab.active')?.dataset.v==='may') setView('comp');
+    if(persistir){ const p = JSON.parse(localStorage.getItem('db_perfil')||'{}'); p.modo = modoUsuario; localStorage.setItem('db_perfil', JSON.stringify(p)); }
+    if(document.getElementById('chat-sug') && document.getElementById('chat-sug').children.length) chatSugerencias();
+  }
+  function toggleModo(){ aplicarModo(modoUsuario==='negocio' ? 'consumidor' : 'negocio', true); }
   function catArrows(){
     const b=document.getElementById('catbar'); if(!b) return;
     const hay = b.scrollWidth > b.clientWidth + 4;
@@ -999,6 +1030,7 @@
   }
   async function init(){
     initDark(); initDensidad();
+    try{ const p = JSON.parse(localStorage.getItem('db_perfil')||'{}'); aplicarModo(p.modo||'consumidor', false); }catch(_e){ aplicarModo('consumidor', false); }
     const { data: tiendas } = await sb.from("dealbot_tiendas").select("retailer,tipo");
     TIPO = Object.fromEntries((tiendas||[]).map(t=>[t.retailer,t.tipo]));
     const { data } = await sb.from("dealbot_categorias").select("slug,nombre,tiene_referencia,activo").eq("activo",true).order("orden");
@@ -1197,7 +1229,9 @@
     document.getElementById('chat-panel').classList.toggle('open', chatAbierto);
     document.getElementById('chat-fab').style.display = chatAbierto ? 'none' : '';
     if(chatAbierto && !document.getElementById('chat-body').children.length){
-      chatMsg('a', '¡Hola! 👋 Soy el asistente de DealBot. Preguntame por precios de '+(catActual?catActual.nombre:'productos')+' en los supermercados de Panamá.');
+      chatMsg('a', modoUsuario==='negocio'
+        ? '👋 Soy tu analista de DealBot. Preguntame por competencia, ranking de tiendas, oportunidades o cómo se mueve tu marca.'
+        : '¡Hola! 👋 Soy el asistente de DealBot. Preguntame dónde ahorrar en '+(catActual?catActual.nombre:'tus compras')+'.');
       chatSugerencias();
       setTimeout(()=>document.getElementById('chat-input').focus(), 100);
     }
@@ -1221,7 +1255,9 @@
   }
   function chatSugerencias(){
     const cat = catActual ? catActual.nombre.toLowerCase() : 'café';
-    const sug = ['¿Dónde está más barato el '+cat+'?', '¿Qué supermercado conviene hoy?', 'Mostrame los mejores ahorros'];
+    const sug = modoUsuario==='negocio'
+      ? ['¿Dónde estoy más caro o más barato?', 'Resumen ejecutivo de '+cat, 'Comparar supermercados', '¿Qué oportunidades hay hoy?']
+      : ['¿Dónde está más barato el '+cat+'?', '¿Qué súper conviene hoy?', 'Mostrame los mejores ahorros'];
     document.getElementById('chat-sug').innerHTML = sug.map(s=>`<button onclick="chatEnviar(this.textContent)">${s}</button>`).join('');
   }
   async function chatEnviar(texto){
@@ -1237,7 +1273,7 @@
       const r = await fetch(CHAT_URL, {
         method:'POST',
         headers:{ 'content-type':'application/json', 'authorization':'Bearer '+SUPABASE_ANON, 'apikey':SUPABASE_ANON },
-        body: JSON.stringify({ pregunta: q, categoria: catActual ? catActual.slug : 'atun' })
+        body: JSON.stringify({ pregunta: q, categoria: catActual ? catActual.slug : 'atun', modo: modoUsuario })
       });
       const j = await r.json();
       load.classList.remove('load');
@@ -1306,6 +1342,7 @@
   async function onbEntrar(){
     localStorage.setItem('db_onboarded','1');
     localStorage.setItem('db_perfil', JSON.stringify({ modo:onbCfg&&onbCfg.modo, marca:(onbCfg&&onbCfg.marca)||null }));
+    aplicarModo(onbCfg && onbCfg.modo ? onbCfg.modo : 'consumidor', false);
     document.getElementById('onb').classList.remove('open');
     // si se agregaron categorías nuevas (scrapeo bajo demanda), recargar la lista + catbar
     if(onbCfg && onbCfg.agregadas && onbCfg.agregadas.length){
