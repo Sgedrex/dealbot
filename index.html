@@ -290,6 +290,14 @@
   .cfg-inline button{background:var(--green);color:#fff;border:none;border-radius:10px;padding:0 16px;font-weight:800;cursor:pointer;font-size:13px}
   .cfg-btn{background:none;border:1px solid var(--line);color:var(--mut);width:100%;padding:11px;border-radius:11px;font-weight:700;cursor:pointer;font-size:13px;transition:.14s}
   .cfg-btn:hover{border-color:var(--green);color:var(--green-d)}
+  /* Catalogo retail: orden por columnas + agrupado + filas legibles */
+  #view-deals th[data-sort]{cursor:pointer;user-select:none;white-space:nowrap}
+  #view-deals th[data-sort]:hover{color:var(--green-d)}
+  #view-deals th.sorton{color:var(--green-d)}
+  #view-deals .sortind{font-size:9px}
+  #view-deals tbody td{padding-top:11px;padding-bottom:11px}
+  .grouprow td{background:var(--card2);font-weight:800;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;padding:6px 12px !important}
+  .grouprow .gcount{display:inline-block;min-width:18px;text-align:center;background:var(--green);color:#fff;border-radius:999px;padding:0 6px;font-size:10px;margin-left:5px}
 </style>
 </head>
 <body>
@@ -413,8 +421,12 @@
     <div class="tablewrap">
       <table>
         <thead><tr>
-          <th class="name">Producto</th><th>Marca</th><th>Tienda</th>
-          <th class="r">Precio</th><th class="r">Lista</th><th class="r">Desc.</th>
+          <th class="name" data-sort="nombre" onclick="sortDeals('nombre')">Producto<span class="sortind"></span></th>
+          <th data-sort="marca" onclick="sortDeals('marca')">Marca<span class="sortind"></span></th>
+          <th>Tienda</th>
+          <th class="r" data-sort="price" onclick="sortDeals('price')">Precio<span class="sortind"></span></th>
+          <th class="r">Lista</th>
+          <th class="r" data-sort="desc" onclick="sortDeals('desc')">Desc.<span class="sortind"></span></th>
         </tr></thead>
         <tbody id="deals-rows"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
       </table>
@@ -1250,6 +1262,73 @@
     return Math.max(...gs)/Math.min(...gs) > 1.4;   // >40% de diferencia de tamaño = no comparable
   }
   const esComparable = d => nRetailCount(d)>=2 && !tamanoDispar(d);
+  // ===== Catálogo retail: limpieza de nombres + orden por columnas + agrupado por marca =====
+  function nombreLimpio(n){
+    if(!n) return '';
+    let s = ' '+n+' ';
+    s = s.replace(/v\s*\/?\s*camps?/ig,' Van Camps ');
+    s = s.replace(/\(?\s*light\s*\)?/ig,' Light ');
+    s = s.replace(/\bgrs?\b/ig,'g');
+    s = s.replace(/\be\s*\/\s*agua\b/ig,' en Agua ');
+    s = s.replace(/\ba\s*\/\s*faci?l?\b/ig,' Abre Fácil ');
+    s = s.replace(/\batun\b/ig,'Atún');
+    s = s.replace(/\bcafe\b/ig,'Café');
+    s = s.replace(/(?:\d+\/)+(\d+)\s*g\b/ig,'$1g');   // packaging 48/160 g -> 160g
+    s = s.replace(/(\d+)\s+g\b/ig,'$1g');             // 160 g -> 160g
+    s = s.trim().replace(/\s+/g,' ');
+    const lower = new Set(['en','de','con','y','a','la','el','los','las','del','para','sin']);
+    return s.split(' ').map((w,i)=>{
+      if(/^[\d(]/.test(w)) return w.toLowerCase();
+      const wl = w.toLowerCase();
+      if(i>0 && lower.has(wl)) return wl;
+      return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();
+    }).join(' ');
+  }
+  let dealsFiltrados = [];
+  let dealsSort = { campo:'marca', dir:1 };
+  const DEALS_SORTERS = {
+    nombre: (a,b)=> nombreLimpio(a.nombre).localeCompare(nombreLimpio(b.nombre)),
+    marca:  (a,b)=> (a.marca||'zzz').localeCompare(b.marca||'zzz') || nombreLimpio(a.nombre).localeCompare(nombreLimpio(b.nombre)),
+    price:  (a,b)=> (Number(a.price)||0)-(Number(b.price)||0),
+    desc:   (a,b)=> (Number(a.desc_retailer_pct)||0)-(Number(b.desc_retailer_pct)||0),
+  };
+  function sortDeals(campo){
+    if(dealsSort.campo===campo) dealsSort.dir*=-1;
+    else { dealsSort.campo=campo; dealsSort.dir = (campo==='desc')?-1:1; }
+    pintarDeals();
+  }
+  function pintarSortHeaders(){
+    document.querySelectorAll('#view-deals th[data-sort]').forEach(th=>{
+      const on = th.dataset.sort===dealsSort.campo;
+      th.classList.toggle('sorton', on);
+      const ind = th.querySelector('.sortind'); if(ind) ind.textContent = on ? (dealsSort.dir>0?' ▲':' ▼') : '';
+    });
+  }
+  function filaDeal(d){
+    const pct=Number(d.desc_retailer_pct)||0;
+    const ref = d.referencia ? `<span class="tagref">${d.referencia}</span>` : "";
+    return `<tr>
+      <td class="name">${d.es_deal?"🔥 ":""}<a href="${d.link}" target="_blank">${nombreLimpio(d.nombre)}</a>${ref}${d.ean?`<span class="ean">SKU ${d.ean}</span>`:""}</td>
+      <td>${d.marca||"—"}</td>
+      <td><span class="chip ${chipClass(d.retailer)}">${tiendaNombre[d.retailer]||d.retailer}</span></td>
+      <td class="r">${money(d.price)}</td>
+      <td class="r">${Number(d.list_price)>Number(d.price)?money(d.list_price):"—"}</td>
+      <td class="r ${pct>0?'pos':'zero'}">${pct>0?"−"+pct.toFixed(1)+"%":"—"}</td>
+    </tr>`;
+  }
+  function pintarDeals(){
+    const cont = document.getElementById('deals-rows');
+    if(!dealsFiltrados.length){ cont.innerHTML = '<tr><td colspan="6" class="empty">Sin productos con estos filtros.</td></tr>'; pintarSortHeaders(); return; }
+    const base = DEALS_SORTERS[dealsSort.campo] || DEALS_SORTERS.marca;
+    const arr = [...dealsFiltrados].sort((a,b)=> base(a,b)*dealsSort.dir);
+    let html='';
+    if(dealsSort.campo==='marca'){
+      const groups={}; arr.forEach(d=>{ const m=d.marca||'Otros'; (groups[m] ??= []).push(d); });
+      let marcas = Object.keys(groups).sort((a,b)=>a.localeCompare(b)); if(dealsSort.dir<0) marcas.reverse();
+      marcas.forEach(m=>{ html += `<tr class="grouprow"><td colspan="6">${m} <span class="gcount">${groups[m].length}</span></td></tr>` + groups[m].map(filaDeal).join(''); });
+    } else { html = arr.map(filaDeal).join(''); }
+    cont.innerHTML = html; pintarSortHeaders();
+  }
   function render(){
     let comp = aplicaFiltros(compData).filter(esComparable);  // 2+ tiendas y mismo tamaño
     if(filtroGana) comp = comp.filter(d=>d.tienda_mas_barata===(tiendaNombre[filtroGana]||filtroGana));
@@ -1303,19 +1382,7 @@
         : "Sin coincidencias con estos filtros."
     }</td></tr>`;
 
-    const dord = [...deals].sort((a,b)=>(b.es_deal-a.es_deal)||(Number(b.desc_retailer_pct)-Number(a.desc_retailer_pct)));
-    document.getElementById("deals-rows").innerHTML = dord.length ? dord.map(d=>{
-      const pct=Number(d.desc_retailer_pct)||0;
-      const ref = d.referencia ? `<span class="tagref">${d.referencia}</span>` : "";
-      return `<tr>
-        <td class="name">${d.es_deal?"🔥 ":""}<a href="${d.link}" target="_blank">${d.nombre}</a>${ref}${d.ean?`<span class="ean">SKU ${d.ean}</span>`:""}</td>
-        <td>${d.marca||"—"}</td>
-        <td><span class="chip ${chipClass(d.retailer)}">${tiendaNombre[d.retailer]||d.retailer}</span></td>
-        <td class="r">${money(d.price)}</td>
-        <td class="r">${Number(d.list_price)>Number(d.price)?money(d.list_price):"—"}</td>
-        <td class="r ${pct>0?'pos':'zero'}">${pct>0?"−"+pct.toFixed(1)+"%":"—"}</td>
-      </tr>`;
-    }).join("") : `<tr><td colspan="6" class="empty">Sin productos con estos filtros.</td></tr>`;
+    dealsFiltrados = deals; pintarDeals();
 
     // Mayoristas (packs)
     const mord = [...dealsMay].sort((a,b)=>Number(a.price)-Number(b.price));
