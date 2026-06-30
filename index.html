@@ -710,7 +710,7 @@
     chartHist = new Chart(document.getElementById('chart-hist'), {
       type:'line',
       data:{ datasets: ds },
-      options:{ parsing:false, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>c.dataset.label+': $'+Number(c.parsed.y).toFixed(2)}}},
+      options:{ parsing:false, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleString('es-PA',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'',label:c=>c.dataset.label+': $'+Number(c.parsed.y).toFixed(2)}}},
         scales:{ x:{ type:'linear', ticks:{ maxTicksLimit:6, callback:function(v){ return new Date(v).toLocaleString('es-PA',{day:'2-digit',month:'short',hour:'2-digit'}); } } },
                  y:{ ticks:{ callback:v=>'$'+Number(v).toFixed(2) } } } }
     });
