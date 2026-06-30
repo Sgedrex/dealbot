@@ -995,7 +995,7 @@
     const _act=document.querySelector('.cat.active'); if(_act&&_act.scrollIntoView) _act.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
     // skeleton loading mientras carga (#21)
     ['comp-rows','deals-rows','may-rows'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML='<tr><td colspan="10" style="border:none"><div class="skelrow"></div><div class="skelrow"></div><div class="skelrow"></div><div class="skelrow"></div></td></tr>'; });
-    document.getElementById("f-ref").style.display = catActual.tiene_referencia ? "" : "none";
+    document.getElementById("f-ref").style.display = "none";  // se decide tras cargar datos (segun referencias reales)
     document.getElementById("q").value = ""; document.getElementById("f-marca").value=""; document.getElementById("f-ref").value="";
 
     const [comp, deals, rank, infl] = await Promise.all([
@@ -1015,6 +1015,7 @@
     const refLabel = { agua:"En agua", aceite:"En aceite", vegetales:"Con vegetales", tomate:"En tomate", picante:"Picante" };
     const refs = [...new Set(dealsData.map(d=>d.referencia).filter(Boolean))].sort();
     document.getElementById("f-ref").innerHTML = '<option value="">Toda referencia</option>' + refs.map(r=>`<option value="${r}">${refLabel[r]||r}</option>`).join("");
+    document.getElementById("f-ref").style.display = refs.length ? "" : "none";  // solo visible si la categoria tiene referencias reales
 
     // autocompletar (nombres + marcas + SKU)
     const sug = new Set();
@@ -1053,7 +1054,7 @@
   function aplicaFiltros(arr){
     const q = document.getElementById("q").value.trim().toLowerCase();
     const marca = document.getElementById("f-marca").value;
-    const ref = catActual.tiene_referencia ? document.getElementById("f-ref").value : "";
+    const ref = document.getElementById("f-ref").value || "";
     return arr.filter(d=>{
       if(soloFavs && !favs.has(d.ean)) return false;
       if(q && !((d.nombre||"").toLowerCase().includes(q) || (d.ean||"").includes(q) || (d.marca||"").toLowerCase().includes(q))) return false;
