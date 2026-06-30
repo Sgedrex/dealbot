@@ -104,11 +104,25 @@
   .rank .meta{font-size:11px;color:var(--mut)}
   /* canasta */
   .canasta-fab{position:fixed;right:18px;bottom:18px;background:var(--green);color:#fff;border:none;border-radius:999px;padding:13px 18px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(21,163,74,.4);z-index:40}
-  .overlay{position:fixed;inset:0;background:rgba(16,42,30,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+  .overlay{position:fixed;inset:0;background:rgba(16,42,30,.55);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;z-index:50;padding:16px;animation:ovfade .2s ease}
   .overlay.open{display:flex}
-  .sheet{background:var(--card);border-radius:18px;max-width:620px;width:100%;max-height:85vh;overflow:auto;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-  .sheet h2{font-size:17px;font-weight:800;margin-bottom:2px}
-  .sheet .x{float:right;border:none;background:var(--card2);border-radius:8px;width:30px;height:30px;font-size:16px;cursor:pointer;color:var(--mut)}
+  @keyframes ovfade{from{opacity:0}to{opacity:1}}
+  .sheet{background:var(--card);border:1px solid var(--line);border-radius:18px;max-width:640px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.4);animation:sheetin .3s cubic-bezier(.22,1,.36,1)}
+  @keyframes sheetin{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+  .sheet h2{font-size:18px;font-weight:800;margin-bottom:2px}
+  .sheet .x{float:right;border:1px solid var(--line);background:var(--card2);border-radius:10px;width:34px;height:34px;font-size:16px;cursor:pointer;color:var(--mut);transition:.15s}
+  .sheet .x:hover{border-color:var(--green);color:var(--green-d);background:var(--greenbg)}
+  /* estado vacío del gráfico */
+  .ecstats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+  .ecstat{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .ecstat .v{font-size:16px;font-weight:800;letter-spacing:-.3px}
+  .ecstat .l{font-size:9.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;font-weight:700;margin-top:1px}
+  .ecmsg{font-size:12px;background:var(--greenbg);color:var(--green-d);border-radius:10px;padding:9px 12px;line-height:1.4;font-weight:600}
+  /* densidad de tabla + celdas vacías tenues */
+  body.compact th,body.compact td{padding:6px 12px}
+  .dash{color:var(--line)}
+  body.dark .dash{color:#2c3c34}
+  @media(max-width:560px){.overlay{padding:0;align-items:flex-end}.sheet{max-width:100%;max-height:94vh;border-radius:18px 18px 0 0;padding:18px 16px 26px}}
   .cline{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
   .cstore{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:10px}
   .cstore .row2{display:flex;justify-content:space-between;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:600}
@@ -171,6 +185,17 @@
   .oprow:hover,.alrow:hover{background:var(--card2)}
   .pname{cursor:pointer}
   .pname:hover{color:var(--green-d);text-decoration:underline}
+  /* simulador: tarjeta Mejor opción */
+  .bestopt{background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .bestopt .bo-l{font-size:10px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:700}
+  .bestopt .bo-store{font-size:22px;font-weight:800;margin:2px 0 10px;letter-spacing:-.4px}
+  .bestopt .bo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .bestopt .bo-v{font-size:17px;font-weight:800}
+  .bestopt .bo-k{font-size:10px;opacity:.85;font-weight:600}
+  .bestopt .bo-alt{font-size:11px;opacity:.92;margin-top:10px;border-top:1px solid rgba(255,255,255,.25);padding-top:8px}
+  /* comparador VS: frase resumen */
+  .vsfrase{background:var(--greenbg);color:var(--green-d);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px;text-align:center;font-weight:600;line-height:1.4}
+  .altipo{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--mut);margin-left:4px}
 </style>
 </head>
 <body>
@@ -204,6 +229,7 @@
       <option value="">Toda referencia</option>
     </select>
     <button class="btn-exp" id="btn-favs" onclick="toggleSoloFavs()" title="Ver solo favoritos">⭐ Favoritos</button>
+    <button class="btn-exp" id="btn-dens" onclick="toggleDensidad()" title="Alternar densidad de la tabla">↕ Compacto</button>
     <div class="expgroup">
       <button class="btn-exp" onclick="compartir()">🔗 Compartir</button>
       <button class="btn-exp" onclick="exportExcel()">📥 Excel</button>
@@ -276,7 +302,7 @@
       <div class="panel">
         <h3>📈 Índice de precios</h3>
         <div class="ph">Precio promedio de la categoría por día (la tendencia crece con cada actualización)</div>
-        <canvas id="chart-infl" height="170"></canvas>
+        <div id="infl-box"><canvas id="chart-infl" height="170"></canvas></div>
       </div>
     </div>
     <div class="analwrap" style="margin-top:14px">
@@ -435,7 +461,7 @@
 
     // resumen del día
     const li = [
-      `Hoy se comparan <b>${compData.length}</b> productos de <b>${catN}</b> entre 7 supermercados.`,
+      `Hoy se comparan <b>${compData.filter(d=>nRetailCount(d)>=2).length}</b> productos de <b>${catN}</b> entre 7 supermercados.`,
       masBarato ? `<b>${tn(masBarato.retailer)}</b> lidera en precios bajos (gana ${masBarato.veces_mas_barata}/${masBarato.productos} comparaciones).` : '',
       best ? `El mayor ahorro encontrado es <b>${Number(best.ahorro_pct).toFixed(0)}%</b> (${money(best.ahorro_abs)}) en ${best.nombre}.` : '',
       conAhorro.length ? `La oportunidad promedio es de <b>${money(avg)}</b> por producto; hay <b>${nDeals}</b> con descuento activo.` : `Aún no hay diferencias de precio comparables en ${catN}.`,
@@ -470,10 +496,13 @@
 
     // alertas: deals con descuento
     const al = [...deals].filter(d=>d.es_deal).sort((a,b)=>Number(b.desc_retailer_pct)-Number(a.desc_retailer_pct)).slice(0,6);
-    document.getElementById('alertas').innerHTML = al.length ? al.map(d=>
-      `<div class="alrow" onclick="window.open('${(d.link||'').replace(/'/g,'')}','_blank')" title="Ver la oferta en la tienda"><span class="nm">🔥 ${d.nombre}</span>
+    const tipoAl = pct => pct>=20?{ic:'🔥',t:'Descuentazo'}:pct>=10?{ic:'🏷️',t:'Descuento'}:{ic:'💸',t:'Rebaja'};
+    document.getElementById('alertas').innerHTML = al.length ? al.map(d=>{
+      const ta=tipoAl(Number(d.desc_retailer_pct)||0);
+      return `<div class="alrow" onclick="window.open('${(d.link||'').replace(/'/g,'')}','_blank')" title="Ver la oferta en la tienda"><span class="nm">${ta.ic} ${d.nombre}<span class="altipo">${ta.t}</span></span>
         <span class="chip ${chipClass(d.retailer)}" style="margin:0 6px">${tn(d.retailer)}</span>
-        <span class="savechip">−${Number(d.desc_retailer_pct).toFixed(0)}%</span></div>`).join('')
+        <span class="savechip">−${Number(d.desc_retailer_pct).toFixed(0)}%</span></div>`;
+    }).join('')
       : '<div class="empty">Sin descuentos activos en esta categoría. Las alertas de subida/bajada aparecerán cuando haya varios días de historia.</div>';
 
     fxEntrada('#insight-cards .insight');
@@ -502,7 +531,23 @@
       </div>`;
     }).join("") : `<div class="empty">Sin datos suficientes para rankear.</div>`;
 
-    // Índice de precios (línea por categoría en el tiempo)
+    // Índice de precios — estado vacío inteligente si hay <3 puntos históricos
+    const box = document.getElementById('infl-box');
+    if(inflData.length < 3){
+      if(chartInfl){ chartInfl.destroy(); chartInfl=null; }
+      const precios = dealsData.filter(d=>!esMayorista(d.retailer)).map(d=>Number(d.price)).filter(p=>p>0);
+      const min = precios.length?Math.min(...precios):0, max = precios.length?Math.max(...precios):0;
+      const prom = inflData.length?Number(inflData[inflData.length-1].precio_promedio):(precios.length?precios.reduce((s,p)=>s+p,0)/precios.length:0);
+      box.innerHTML = `<div class="ecstats">
+          <div class="ecstat"><div class="v">${money(prom)}</div><div class="l">Precio promedio actual</div></div>
+          <div class="ecstat"><div class="v">${inflData.length}</div><div class="l">Actualizaciones registradas</div></div>
+          <div class="ecstat"><div class="v">${money(min)}</div><div class="l">Precio mínimo</div></div>
+          <div class="ecstat"><div class="v">${money(max)}</div><div class="l">Precio máximo</div></div>
+        </div>
+        <div class="ecmsg">📊 Estamos construyendo el historial. La tendencia aparecerá cuando existan más actualizaciones (se guardan precios 2× al día).</div>`;
+      return;
+    }
+    box.innerHTML = '<canvas id="chart-infl" height="170"></canvas>';
     const labels = inflData.map(d=>new Date(d.periodo).toLocaleDateString('es-PA',{day:'2-digit',month:'short'}));
     const vals = inflData.map(d=>Number(d.precio_promedio));
     if(chartInfl) chartInfl.destroy();
@@ -592,13 +637,23 @@
       for(const p of precios){ if(suma+p<=monto){ suma+=p; n++; } }
       return { ret, n, suma };
     }).filter(t=>t.n>0).sort((a,b)=>b.n-a.n || a.suma-b.suma);
-    const maxN = res.length ? res[0].n : 0;
-    document.getElementById('sim-res').innerHTML = res.length ? res.map((t,i)=>
+    if(!res.length){ document.getElementById('sim-res').innerHTML='<div class="empty">Ingresá un monto para simular.</div>'; return; }
+    const best=res[0], alt=res[1];
+    const card = `<div class="bestopt">
+        <div class="bo-l">🏆 Mejor opción para tu presupuesto</div>
+        <div class="bo-store">${tiendaNombre[best.ret]||best.ret}</div>
+        <div class="bo-grid">
+          <div><div class="bo-v">${best.n}</div><div class="bo-k">productos posibles</div></div>
+          <div><div class="bo-v">$${best.suma.toFixed(2)}</div><div class="bo-k">total estimado</div></div>
+          <div><div class="bo-v">$${(monto-best.suma).toFixed(2)}</div><div class="bo-k">te sobra</div></div>
+        </div>
+        ${alt?`<div class="bo-alt">Mejor alternativa: <b>${tiendaNombre[alt.ret]||alt.ret}</b> — ${alt.n} productos · $${alt.suma.toFixed(2)}</div>`:''}
+      </div>`;
+    const lista = res.map((t,i)=>
       `<div class="row2 ${i===0?'win':''}" style="margin-bottom:6px">
          <span>${i===0?'🏆 ':''}${tiendaNombre[t.ret]||t.ret}</span>
-         <span><b>${t.n}</b> productos · $${t.suma.toFixed(2)}</span></div>`).join("")
-      + `<div class="ph" style="font-size:11px;color:var(--mut);margin-top:8px">Con $${monto} maximizás tu compra en <b>${tiendaNombre[res[0].ret]||res[0].ret}</b> (${maxN} productos distintos de ${catActual?catActual.nombre:''}).</div>`
-      : '<div class="empty">Ingresá un monto para simular.</div>';
+         <span><b>${t.n}</b> productos · $${t.suma.toFixed(2)}</span></div>`).join("");
+    document.getElementById('sim-res').innerHTML = card + lista;
   }
 
   // ===== Comparador de marcas (P5) =====
@@ -630,7 +685,14 @@
         <div style="font-size:12px;color:var(--mut)">${s.n} productos · desde ${s.min>0?money(s.min):'—'}</div>
         <div style="font-size:12px;color:var(--mut);margin-top:3px">más barata en <b>${s.bestT?(tiendaNombre[s.bestT]||s.bestT):'—'}</b></div>
       </div>`;
-    document.getElementById('mk-res').innerHTML =
+    let frase='';
+    if(a!==b && sa.avg>0 && sb.avg>0){
+      const dif = Math.abs(sa.avg-sb.avg)/Math.max(sa.avg,sb.avg)*100;
+      if(dif>=0.5){ const barata=sa.avg<=sb.avg?a:b, cara=sa.avg<=sb.avg?b:a;
+        frase=`<div class="vsfrase"><b>${barata}</b> es <b>${dif.toFixed(0)}%</b> más barata que <b>${cara}</b> en ${catActual?catActual.nombre:''}.</div>`; }
+      else frase=`<div class="vsfrase"><b>${a}</b> y <b>${b}</b> tienen precios promedio casi iguales en ${catActual?catActual.nombre:''}.</div>`;
+    }
+    document.getElementById('mk-res').innerHTML = frase +
       `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${card(a,sa,winA)}${b&&b!==a?card(b,sb,!winA):''}</div>`;
   }
   // ===== Favoritos / Compartir / Dark mode (P7) =====
@@ -662,6 +724,14 @@
   }
   function initDark(){
     if(localStorage.getItem('db_dark')==='1'){ document.body.classList.add('dark'); document.getElementById('btn-dark').textContent='☀️'; }
+  }
+  function toggleDensidad(){
+    const on = document.body.classList.toggle('compact');
+    localStorage.setItem('db_compact', on?'1':'0');
+    document.getElementById('btn-dens').textContent = on?'↕ Cómodo':'↕ Compacto';
+  }
+  function initDensidad(){
+    if(localStorage.getItem('db_compact')==='1'){ document.body.classList.add('compact'); const b=document.getElementById('btn-dens'); if(b) b.textContent='↕ Cómodo'; }
   }
   function abrir(id){ document.getElementById(id).classList.add('open'); }
   function cerrar(id){ document.getElementById(id).classList.remove('open'); }
@@ -734,7 +804,7 @@
   }
 
   async function init(){
-    initDark();
+    initDark(); initDensidad();
     const { data: tiendas } = await sb.from("dealbot_tiendas").select("retailer,tipo");
     TIPO = Object.fromEntries((tiendas||[]).map(t=>[t.retailer,t.tipo]));
     const { data } = await sb.from("dealbot_categorias").select("slug,nombre,tiene_referencia,activo").eq("activo",true).order("orden");
@@ -850,7 +920,7 @@
     document.getElementById("k-save-s").textContent = avgAbs>0 ? "$"+avgAbs.toFixed(2)+" promedio" : "";
 
     const esc = s => (s||"").replace(/"/g,"&quot;");
-    const cell = (v,best,label,link,nat)=> v==null ? "—" : (
+    const cell = (v,best,label,link,nat)=> v==null ? '<span class="dash">—</span>' : (
       link ? `<a class="plink${best===label?' best':''}" href="${link}" target="_blank" title="${esc(nat)}">${money(v)}</a>`
            : `<span class="${best===label?'best':''}" title="${esc(nat)}">${money(v)}</span>`);
     document.getElementById("comp-rows").innerHTML = comp.length ? comp.map(d=>{
