@@ -18,7 +18,7 @@ const S99_HEADERS = { "content-type": "application/json", "x-api-key": "da886b56
 const S99_QUERY = `query S($phrase: String!, $pageSize: Int, $currentPage: Int, $filter: [SearchClauseInput!], $context: QueryContextInput) { productSearch(phrase: $phrase, page_size: $pageSize, current_page: $currentPage, filter: $filter, context: $context) { items { product { sku name price_range { minimum_price { regular_price { value } final_price { value } } } } productView { attributes { name value } } } } }`;
 
 function tiendaNombre(r: string) {
-  const m: any = { superxtra: "SuperXtra", superrey: "Super Rey", msmega: "MsMega", super99: "Super99", supercarnes: "SuperCarnes", superbaru: "Super Barú", machetazo: "El Machetazo" };
+  const m: any = { superxtra: "SuperXtra", superrey: "Super Rey", msmega: "MsMega", super99: "Super99", supercarnes: "SuperCarnes", superbaru: "Super Barú", machetazo: "El Machetazo", ribasmith: "Riba Smith" };
   return m[r] ?? r;
 }
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -111,7 +111,23 @@ async function fetchSuperBaru(term: string) {
   return results.filter((x: any) => x.price > 0);
 }
 
-const FETCHERS = [fetchXtra, fetchMachetazo, fetchRey, fetchMsMega, fetchSuper99, fetchSuperCarnes, fetchSuperBaru];
+// Riba Smith (premium): Magento GraphQL nativo. sku = codigo de barras (EAN) -> empareja directo.
+async function fetchRibaSmith(term: string) {
+  const query = "query S($s:String!,$pg:Int!){ products(search:$s, pageSize:50, currentPage:$pg){ items { name sku price_range { minimum_price { final_price { value } regular_price { value } } } } } }";
+  const seen = new Set<string>(); const out: any[] = [];
+  for (let pg = 1; pg <= 4; pg++) {
+    const res = await fetch("https://www.ribasmith.com/graphql", { method: "POST", headers: { "content-type": "application/json", "user-agent": UA }, body: JSON.stringify({ query, variables: { s: term, pg } }) });
+    if (!res.ok) break;
+    const json = await res.json();
+    const items = json?.data?.products?.items ?? [];
+    if (!items.length) break;
+    for (const p of items) { const sku = String(p.sku ?? ""); if (!sku || seen.has(sku)) continue; seen.add(sku); const mp = p.price_range?.minimum_price ?? {}; out.push({ retailer: "ribasmith", product_id: sku, ean: sku, nombre: p.name ?? "", marca: "", link: `https://www.ribasmith.com/catalogsearch/result/?q=${encodeURIComponent(p.name ?? "")}`, price: Number(mp.final_price?.value ?? 0), list_price: mp.regular_price?.value ? String(mp.regular_price.value) : "" }); }
+    if (items.length < 50) break;
+  }
+  return out.filter((x) => x.price > 0);
+}
+
+const FETCHERS = [fetchXtra, fetchMachetazo, fetchRey, fetchMsMega, fetchSuper99, fetchSuperCarnes, fetchSuperBaru, fetchRibaSmith];
 
 async function rpc(fn: string, args: any) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { "content-type": "application/json", apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}` }, body: JSON.stringify(args) });
