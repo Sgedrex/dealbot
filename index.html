@@ -287,6 +287,30 @@
   .panelchip{display:inline-flex;align-items:center;gap:8px;background:var(--greenbg);color:var(--green-d);border:1px solid var(--green);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:800;margin-bottom:12px}
   .panelchip button{background:none;border:none;color:var(--green-d);cursor:pointer;font-size:15px;font-weight:800;line-height:1;padding:0;opacity:.7}
   .panelchip button:hover{opacity:1}
+  /* panel de marca (modo negocio con marca propia) */
+  .pmarca{background:var(--card);border:1px solid var(--green);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .pm-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;flex-wrap:wrap;gap:6px}
+  .pm-title{font-size:16px;font-weight:800}
+  .pm-sub{font-size:12px;color:var(--mut)}
+  .pm-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  .pm-k{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;text-align:center}
+  .pm-k .v{font-size:20px;font-weight:800;letter-spacing:-.5px}
+  .pm-k .l{font-size:10.5px;color:var(--mut);margin-top:2px;font-weight:600}
+  .pm-cols{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;margin-bottom:12px}
+  @media(max-width:640px){.pm-kpis{grid-template-columns:repeat(2,1fr)}.pm-cols{grid-template-columns:1fr}}
+  .pm-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin-bottom:8px}
+  .pm-bar{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px}
+  .pm-bar .nm{width:96px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+  .pm-bar .track{flex:1;height:14px;background:var(--card2);border-radius:7px;overflow:hidden}
+  .pm-bar .fill{height:100%;background:var(--line);border-radius:7px}
+  .pm-bar.me .fill{background:var(--green)}
+  .pm-bar.me{color:var(--green-d)}
+  .pm-bar .pr{width:46px;flex:none;text-align:right;font-weight:800}
+  .pm-cob-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .pm-t{border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:11.5px;font-weight:700}
+  .pm-t.on{border-color:var(--green);background:var(--greenbg);color:var(--green-d)}
+  .pm-t.off{opacity:.45;text-decoration:line-through}
+  .pm-insight{background:var(--greenbg);color:var(--green-d);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;line-height:1.5}
   /* panel de configuracion */
   .cfg-row{margin-bottom:16px}
   .cfg-row>label{display:block;font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;margin-bottom:7px}
@@ -380,6 +404,7 @@
     <button class="catarr" onclick="catScroll(1)" title="Siguiente">›</button>
   </div>
   <div id="panel-chip" class="panelchip" style="display:none"></div>
+  <div id="panel-marca" class="pmarca" style="display:none"></div>
 
   <div class="filtros">
     <input id="q" list="sug" autocomplete="off" placeholder="🔎 Buscar por nombre, marca o SKU…" oninput="render()" />
@@ -1106,6 +1131,7 @@
     if(modoUsuario==='consumidor' && document.querySelector('.tab.active')?.dataset.v==='may') setView('comp');
     if(persistir){ const p = JSON.parse(localStorage.getItem('db_perfil')||'{}'); p.modo = modoUsuario; localStorage.setItem('db_perfil', JSON.stringify(p)); }
     if(document.getElementById('chat-sug') && document.getElementById('chat-sug').children.length) chatSugerencias();
+    if(typeof pintarPanelMarca==='function') pintarPanelMarca();
   }
   function toggleModo(){ aplicarModo(modoUsuario==='negocio' ? 'consumidor' : 'negocio', true); }
   // chip "Panel personalizado" segun el onboarding (marca o categoria principal elegida)
@@ -1122,6 +1148,59 @@
     delete p.marca; delete p.cat; localStorage.setItem('db_perfil', JSON.stringify(p));
     const sel = document.getElementById('f-marca'); if(sel){ sel.value=''; renderFade(); }
     document.getElementById('panel-chip').style.display = 'none';
+    pintarPanelMarca();
+  }
+  // ===== Panel de marca: KPIs + ranking competitivo + cobertura (modo negocio con marca propia) =====
+  const _norm = s => (s||'').toLowerCase().normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]','g'),'');
+  function pintarPanelMarca(){
+    const el = document.getElementById('panel-marca'); if(!el) return;
+    let p={}; try{ p=JSON.parse(localStorage.getItem('db_perfil')||'{}'); }catch(_e){}
+    const miMarca = (p.marca||'').trim();
+    if(!miMarca || modoUsuario!=='negocio' || !compData.length){ el.style.display='none'; return; }
+    const mine = compData.filter(d=>d.marca && _norm(d.marca)===_norm(miMarca));
+    if(!mine.length){ el.style.display='none'; return; }
+    // ranking de marcas por precio promedio
+    const byMarca = {};
+    compData.forEach(d=>{ if(d.marca) (byMarca[d.marca] ??= []).push(d); });
+    const TCAMPOS = [['precio_xtra','SuperXtra'],['precio_rey','Super Rey'],['precio_99','Super99'],['precio_carnes','SuperCarnes'],['precio_baru','Super Barú'],['precio_mach','El Machetazo'],['precio_riba','Riba Smith']];
+    const ranking = Object.entries(byMarca).map(([m,arr])=>{
+      const pr = arr.map(d=>Number(d.precio_min_retail)).filter(x=>x>0);
+      const cob = TCAMPOS.filter(([c])=>arr.some(d=>Number(d[c])>0)).length;
+      return { m, avg: pr.length? pr.reduce((s,x)=>s+x,0)/pr.length : 0, n: arr.length, cob };
+    }).filter(r=>r.avg>0).sort((a,b)=>a.avg-b.avg);
+    const pos = ranking.findIndex(r=>_norm(r.m)===_norm(miMarca))+1;
+    const mio = ranking.find(r=>_norm(r.m)===_norm(miMarca)) || {avg:0,cob:0};
+    const avgCat = ranking.reduce((s,r)=>s+r.avg*r.n,0)/Math.max(1,ranking.reduce((s,r)=>s+r.n,0));
+    const vsCat = avgCat? Math.round((mio.avg-avgCat)/avgCat*100) : 0;
+    const cobertura = TCAMPOS.map(([c,nom])=>({ nom, on: mine.some(d=>Number(d[c])>0) }));
+    const nCob = cobertura.filter(c=>c.on).length;
+    const lider = [...ranking].sort((a,b)=>b.cob-a.cob)[0];
+    const maxAvg = ranking[ranking.length-1].avg || 1;
+    const barras = ranking.slice(0,7).map(r=>{
+      const me = _norm(r.m)===_norm(miMarca);
+      return `<div class="pm-bar ${me?'me':''}"><span class="nm">${me?'▸ ':''}${r.m}</span><span class="track"><span class="fill" style="width:${Math.max(6,Math.round(r.avg/maxAvg*100))}%"></span></span><span class="pr">${money(r.avg)}</span></div>`;
+    }).join('');
+    const chips = cobertura.map(c=>`<span class="pm-t ${c.on?'on':'off'}">${c.nom}</span>`).join('');
+    const insight = (vsCat<=0
+        ? `Sos <b>competitivo en precio</b> (posición #${pos} de ${ranking.length}, ${Math.abs(vsCat)}% bajo el promedio de la categoría).`
+        : `Tu precio está <b>${vsCat}% sobre el promedio</b> (posición #${pos} de ${ranking.length}) — hay margen para revisar.`)
+      + ' ' + (lider && _norm(lider.m)!==_norm(miMarca)
+        ? `<b>${lider.m}</b> te gana en cobertura (${lider.cob} tiendas vs. tus ${nCob}).`
+        : `Además tenés la <b>mejor cobertura</b> (${nCob} tiendas).`);
+    el.innerHTML = `
+      <div class="pm-head"><div class="pm-title">🎯 Tu marca: <b>${miMarca}</b></div><div class="pm-sub">en ${catActual?catActual.nombre:''} · foto de hoy</div></div>
+      <div class="pm-kpis">
+        <div class="pm-k"><div class="v">${mine.length}</div><div class="l">Mis productos</div></div>
+        <div class="pm-k"><div class="v">${nCob}/7</div><div class="l">Cobertura (tiendas)</div></div>
+        <div class="pm-k"><div class="v" style="color:${vsCat<=0?'var(--green-d)':'#dc2626'}">${vsCat>0?'+':''}${vsCat}%</div><div class="l">vs. promedio categoría</div></div>
+        <div class="pm-k"><div class="v">#${pos} de ${ranking.length}</div><div class="l">Posición de precio</div></div>
+      </div>
+      <div class="pm-cols">
+        <div><div class="pm-h">Ranking de precio (marcas)</div>${barras}</div>
+        <div><div class="pm-h">Cobertura por tienda</div><div class="pm-cob-chips">${chips}</div></div>
+      </div>
+      <div class="pm-insight">💡 ${insight}</div>`;
+    el.style.display='';
   }
   // ===== Panel de configuracion (unifica modo, categoria, marca, tema, reonboarding) =====
   function abrirConfig(){
@@ -1147,7 +1226,7 @@
     const v = (document.getElementById('cfg-marca').value||'').trim();
     let p={}; try{ p=JSON.parse(localStorage.getItem('db_perfil')||'{}'); }catch(_e){}
     p.marca = v || null; localStorage.setItem('db_perfil', JSON.stringify(p));
-    pintarPanelChip();
+    pintarPanelChip(); pintarPanelMarca();
     if(v){ const sel=document.getElementById('f-marca'); const norm=s=>(s||'').toLowerCase(); const w=norm(v.split(/\s+/)[0]); const opt=[...sel.options].find(o=>o.value && norm(o.value).includes(w)); if(opt){ sel.value=opt.value; renderFade(); } }
     cerrar('ov-config');
   }
@@ -1405,6 +1484,7 @@
     }</td></tr>`;
 
     dealsFiltrados = deals; pintarDeals();
+    pintarPanelMarca();
 
     // Mayoristas (packs)
     const mord = [...dealsMay].sort((a,b)=>Number(a.price)-Number(b.price));
