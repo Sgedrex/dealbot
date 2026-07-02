@@ -489,8 +489,9 @@
         <div id="rank-list"></div>
       </div>
       <div class="panel">
-        <h3>📈 Índice de precios</h3>
-        <div class="ph">Precio promedio de la categoría por día (la tendencia crece con cada actualización)</div>
+        <h3>📈 Evolución de precio</h3>
+        <div class="ph">Índice de toda la categoría, o elegí un producto para ver su historia por tienda</div>
+        <select id="infl-sel" onchange="graficoIndice(this.value)" style="width:100%;margin-bottom:10px"></select>
         <div id="infl-box"><canvas id="chart-infl" height="170"></canvas></div>
       </div>
     </div>
@@ -787,7 +788,15 @@
       </div>`;
     }).join("") : `<div class="empty">Sin datos suficientes para rankear.</div>`;
 
-    // Índice de precios — estado vacío inteligente si hay <2 puntos (con 2+ ya se dibuja la tendencia)
+    // selector de producto: índice general o un producto específico
+    document.getElementById('infl-sel').innerHTML = '<option value="">📊 Toda la categoría (índice general)</option>' +
+      compData.slice().sort((a,b)=>nombreLimpio(a.nombre).localeCompare(nombreLimpio(b.nombre)))
+        .map(d=>`<option value="${d.ean}">${nombreLimpio(d.nombre)}</option>`).join('');
+    document.getElementById('infl-sel').value = '';
+    dibujarIndice();
+  }
+  function graficoIndice(ean){ if(ean) dibujarHistProd(ean); else dibujarIndice(); }
+  function dibujarIndice(){
     const box = document.getElementById('infl-box');
     if(inflData.length < 2){
       if(chartInfl){ chartInfl.destroy(); chartInfl=null; }
@@ -807,12 +816,33 @@
     const labels = inflData.map(d=>{ const p=(d.periodo||'').slice(0,10).split('-'); return new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('es-PA',{day:'2-digit',month:'short'}); });
     const vals = inflData.map(d=>Number(d.precio_promedio));
     if(chartInfl) chartInfl.destroy();
-    const ctx = document.getElementById('chart-infl');
-    chartInfl = new Chart(ctx, {
+    chartInfl = new Chart(document.getElementById('chart-infl'), {
       type:'line',
       data:{ labels, datasets:[{ label:'Precio promedio', data:vals, borderColor:'#15a34a', backgroundColor:'rgba(21,163,74,.12)', fill:true, tension:.3, pointRadius:4 }] },
       options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+Number(c.parsed.y).toFixed(2)}}},
         scales:{ y:{ ticks:{ callback:v=>'$'+Number(v).toFixed(2) } } } }
+    });
+  }
+  async function dibujarHistProd(ean){
+    const box = document.getElementById('infl-box');
+    box.innerHTML = '<div class="ph" style="text-align:center;padding:26px 0">Cargando histórico…</div>';
+    const { data } = await sb.from('dealbot_historico').select('*').eq('ean', ean).order('capturado_at');
+    const rows = data || [];
+    const diaKey = ts => new Date(ts).toLocaleDateString('en-CA',{timeZone:'America/Panama'});
+    const porT = {};
+    rows.forEach(r=>{ const dia=diaKey(r.capturado_at); (porT[r.retailer] ??= {})[dia]=Number(r.price); });
+    const ds = Object.entries(porT).map(([ret,dd])=>({
+      label:(tiendaNombre[ret]||ret)+(esMayorista(ret)?' · may.':''),
+      data:Object.keys(dd).sort().map(dia=>({ x:new Date(dia+'T12:00:00Z').getTime(), y:dd[dia] })),
+      borderColor:COLORS[ret]||'#888', backgroundColor:'transparent', tension:.25, pointRadius:3, spanGaps:true, borderDash:esMayorista(ret)?[6,4]:[]
+    }));
+    if(chartInfl){ chartInfl.destroy(); chartInfl=null; }
+    if(!ds.length){ box.innerHTML='<div class="empty">Sin histórico para este producto todavía — se acumula con cada actualización.</div>'; return; }
+    box.innerHTML = '<canvas id="chart-infl" height="170"></canvas>';
+    chartInfl = new Chart(document.getElementById('chart-infl'), {
+      type:'line', data:{ datasets: ds },
+      options:{ parsing:false, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleDateString('es-PA',{day:'2-digit',month:'short',timeZone:'UTC'}):'',label:c=>c.dataset.label+': $'+Number(c.parsed.y).toFixed(2)}}},
+        scales:{ x:{ type:'linear', ticks:{ maxTicksLimit:8, callback:v=>new Date(v).toLocaleDateString('es-PA',{day:'2-digit',month:'short',timeZone:'UTC'}) } }, y:{ ticks:{ callback:v=>'$'+Number(v).toFixed(2) } } } }
     });
   }
 
