@@ -506,6 +506,18 @@
         <div id="alertas"></div>
       </div>
     </div>
+    <div class="analwrap" style="margin-top:14px">
+      <div class="panel">
+        <h3>📉 Bajaron de precio</h3>
+        <div class="ph">Movimientos desde que registramos (gana precisión conforme se acumula histórico)</div>
+        <div id="mov-baja"></div>
+      </div>
+      <div class="panel">
+        <h3>📈 Subieron de precio</h3>
+        <div class="ph">Aumentos recientes — útil para vigilar a la competencia</div>
+        <div id="mov-sube"></div>
+      </div>
+    </div>
   </div>
 
   <button class="canasta-fab" id="canasta-fab" onclick="abrirCanasta()" style="display:none">🧺 Canasta (<span id="canasta-n">0</span>)</button>
@@ -624,7 +636,7 @@
   const iconCat = slug => CAT_ICON[slug] || '🏷️';
 
   let CATS = [], catActual = null, compData = [], dealsData = [], TIPO = {}, vistaActual = 'comp';
-  let rankData = [], inflData = [], canasta = new Map(), chartInfl = null, chartHist = null;
+  let rankData = [], inflData = [], movData = [], canasta = new Map(), chartInfl = null, chartHist = null;
   let favs = new Set(JSON.parse(localStorage.getItem('db_favs')||'[]'));
   let soloFavs = false;
   let filtroGana = null;
@@ -739,6 +751,15 @@
         <span class="savechip">−${Number(d.desc_retailer_pct).toFixed(0)}%</span></div>`;
     }).join('')
       : '<div class="empty">Sin descuentos activos en esta categoría. Las alertas de subida/bajada aparecerán cuando haya varios días de historia.</div>';
+
+    // movimientos de precio (Eje 1 — histórico)
+    const mrow = (m, sube) => `<div class="alrow" title="Pasó de ${money(m.inicial)} a ${money(m.actual)}"><span class="nm">${nombreLimpio(m.nombre)}</span>
+        <span class="chip ${chipClass(m.retailer)}" style="margin:0 6px">${tn(m.retailer)}</span>
+        <span class="savechip" style="${sube?'background:#fee2e2;color:#b91c1c':''}">${money(m.inicial)}→${money(m.actual)} ${sube?'+':'−'}${Math.abs(Number(m.cambio_pct)).toFixed(0)}%</span></div>`;
+    const baja = movData.filter(m=>Number(m.cambio_pct)<0).sort((a,b)=>Number(a.cambio_pct)-Number(b.cambio_pct)).slice(0,7);
+    const sube = movData.filter(m=>Number(m.cambio_pct)>0).sort((a,b)=>Number(b.cambio_pct)-Number(a.cambio_pct)).slice(0,7);
+    document.getElementById('mov-baja').innerHTML = baja.length ? baja.map(m=>mrow(m,false)).join('') : '<div class="empty">Sin bajas registradas aún — aparecerán al acumular más días.</div>';
+    document.getElementById('mov-sube').innerHTML = sube.length ? sube.map(m=>mrow(m,true)).join('') : '<div class="empty">Sin subas registradas aún.</div>';
 
     fxEntrada('#insight-cards .insight');
     fxEntrada('#oportunidades .oprow', 6);
@@ -1264,14 +1285,15 @@
     document.getElementById("f-ref").style.display = "none";  // se decide tras cargar datos (segun referencias reales)
     document.getElementById("q").value = ""; document.getElementById("f-marca").value=""; document.getElementById("f-ref").value="";
 
-    const [comp, deals, rank, infl] = await Promise.all([
+    const [comp, deals, rank, infl, mov] = await Promise.all([
       sb.from("dealbot_comparador").select("*").eq("categoria",slug).order("ahorro_pct",{ascending:false}),
       sb.from("dealbot_deals_actuales").select("*").eq("categoria",slug).order("es_deal",{ascending:false}).order("desc_retailer_pct",{ascending:false}),
       sb.from("dealbot_ranking").select("*").eq("categoria",slug),
-      sb.from("dealbot_inflacion").select("*").eq("categoria",slug).order("periodo")
+      sb.from("dealbot_inflacion").select("*").eq("categoria",slug).order("periodo"),
+      sb.from("dealbot_movimientos").select("*").eq("categoria",slug)
     ]);
     compData = comp.data || []; dealsData = deals.data || [];
-    rankData = rank.data || []; inflData = infl.data || [];
+    rankData = rank.data || []; inflData = infl.data || []; movData = mov.data || [];
 
     // poblar marcas
     const marcas = [...new Set(dealsData.map(d=>d.marca).filter(Boolean))].sort();
