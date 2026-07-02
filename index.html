@@ -1176,7 +1176,9 @@
     const nCob = cobertura.filter(c=>c.on).length;
     const lider = [...ranking].sort((a,b)=>b.cob-a.cob)[0];
     const maxAvg = ranking[ranking.length-1].avg || 1;
-    const barras = ranking.slice(0,7).map(r=>{
+    let topR = ranking.slice(0,7);
+    if(!topR.some(r=>_norm(r.m)===_norm(miMarca))) topR = ranking.slice(0,6).concat(ranking.filter(r=>_norm(r.m)===_norm(miMarca)));
+    const barras = topR.map(r=>{
       const me = _norm(r.m)===_norm(miMarca);
       return `<div class="pm-bar ${me?'me':''}"><span class="nm">${me?'▸ ':''}${r.m}</span><span class="track"><span class="fill" style="width:${Math.max(6,Math.round(r.avg/maxAvg*100))}%"></span></span><span class="pr">${money(r.avg)}</span></div>`;
     }).join('');
