@@ -753,7 +753,7 @@
       : '<div class="empty">Sin descuentos activos en esta categoría. Las alertas de subida/bajada aparecerán cuando haya varios días de historia.</div>';
 
     // movimientos de precio (Eje 1 — histórico)
-    const mrow = (m, sube) => `<div class="alrow" title="Pasó de ${money(m.inicial)} a ${money(m.actual)}"><span class="nm">${nombreLimpio(m.nombre)}</span>
+    const mrow = (m, sube) => `<div class="alrow" style="cursor:pointer" onclick="verHistorico('${(m.ean||'').replace(/'/g,'')}')" title="Ver histórico de precio (pasó de ${money(m.inicial)} a ${money(m.actual)})"><span class="nm">${nombreLimpio(m.nombre)}</span>
         <span class="chip ${chipClass(m.retailer)}" style="margin:0 6px">${tn(m.retailer)}</span>
         <span class="savechip" style="${sube?'background:#fee2e2;color:#b91c1c':''}">${money(m.inicial)}→${money(m.actual)} ${sube?'+':'−'}${Math.abs(Number(m.cambio_pct)).toFixed(0)}%</span></div>`;
     const baja = movData.filter(m=>Number(m.cambio_pct)<0).sort((a,b)=>Number(a.cambio_pct)-Number(b.cambio_pct)).slice(0,7);
