@@ -79,6 +79,13 @@
   .chip.superbaru{background:#dcfce7;color:#15803d}.chip.msmega{background:#e0f2fe;color:#0369a1}
   .chip.machetazo{background:#fee2e2;color:#b91c1c}
   .chip.ribasmith{background:#ccfbf1;color:#0f766e}
+  /* chips de precio por tienda (comparador) */
+  .precios{line-height:2}
+  .pchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--card2);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800;margin:2px 5px 2px 0;text-decoration:none;color:var(--txt);white-space:nowrap;transition:.12s}
+  .pchip .ps{font-weight:600;color:var(--mut);font-size:10.5px}
+  .pchip.best{border-color:var(--green);background:var(--greenbg);color:var(--green-d)}
+  .pchip.best .ps{color:var(--green-d)}
+  .pchip:hover{border-color:var(--green);transform:translateY(-1px)}
   .tagref{display:inline-block;font-size:10px;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:4px;background:var(--card2)}
   .badge-may{display:inline-block;font-size:9px;font-weight:700;color:#0369a1;background:#e0f2fe;border-radius:5px;padding:1px 5px;margin-left:3px;vertical-align:middle}
   .tagpack{display:inline-block;font-size:10px;font-weight:700;color:#a16207;background:#fef7c3;border-radius:6px;padding:1px 6px;margin-left:4px}
@@ -408,11 +415,10 @@
       <table>
         <thead><tr>
           <th class="name">Producto</th><th>Marca</th>
-          <th class="r">SuperXtra</th><th class="r">Super Rey</th><th class="r">Super99</th>
-          <th class="r">S.Carnes</th><th class="r">S.Barú</th><th class="r">Machetazo</th><th class="r">Riba Smith</th>
-          <th class="c">Más barato</th><th class="r">Ahorro</th>
+          <th>Precios por tienda · más barato primero</th>
+          <th class="r">Ahorro</th>
         </tr></thead>
-        <tbody id="comp-rows"><tr><td colspan="10" class="empty">Cargando…</td></tr></tbody>
+        <tbody id="comp-rows"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
       </table>
     </div>
     <div class="nota">🏪 Comparación entre <b>tiendas retail</b> (precio por unidad). Los <b>mayoristas</b> (packs) están en su propia pestaña 🏭.</div>
@@ -1263,6 +1269,27 @@
     return Math.max(...gs)/Math.min(...gs) > 1.4;   // >40% de diferencia de tamaño = no comparable
   }
   const esComparable = d => nRetailCount(d)>=2 && !tamanoDispar(d);
+  // Precios como chips (solo las tiendas que tienen el producto, ordenadas de más barato a más caro)
+  const TIENDAS_FULL = [
+    ['superxtra','precio_xtra','link_xtra','SuperXtra'],
+    ['superrey','precio_rey','link_rey','Super Rey'],
+    ['super99','precio_99','link_99','Super99'],
+    ['supercarnes','precio_carnes','link_carnes','SuperCarnes'],
+    ['superbaru','precio_baru','link_baru','Super Barú'],
+    ['machetazo','precio_mach','link_mach','El Machetazo'],
+    ['ribasmith','precio_riba','link_riba','Riba Smith'],
+  ];
+  function preciosChips(d){
+    const best = d.tienda_mas_barata;
+    const arr = TIENDAS_FULL.map(([slug,pc,lc,nom])=>({slug,nom,precio:Number(d[pc]),link:d[lc]}))
+      .filter(t=>t.precio>0).sort((a,b)=>a.precio-b.precio);
+    if(!arr.length) return '<span class="zero">—</span>';
+    return arr.map(t=>{
+      const cls = 'pchip '+chipClass(t.slug)+(t.nom===best?' best':'');
+      const cont = `<span class="ps">${t.nom}</span> ${money(t.precio)}`;
+      return t.link ? `<a class="${cls}" href="${t.link}" target="_blank">${cont}</a>` : `<span class="${cls}">${cont}</span>`;
+    }).join('');
+  }
   // ===== Catálogo retail: limpieza de nombres + orden por columnas + agrupado por marca =====
   function nombreLimpio(n){
     if(!n) return '';
@@ -1366,19 +1393,12 @@
             <button class="iconbtn fav${favs.has(d.ean)?' on':''}" title="Marcar favorito" onclick="toggleFav('${d.ean}')">${favs.has(d.ean)?'★':'☆'}</button>
             <button class="iconbtn" title="Ver histórico de precio" onclick="verHistorico('${d.ean}')">📈</button>
             <button class="iconbtn cb-${d.ean}${canasta.has(d.ean)?' on':''}" title="Agregar a la canasta" onclick="toggleCanasta('${d.ean}')">🧺</button>
-          </span><span class="pname" title="Ver histórico de precio" onclick="verHistorico('${d.ean}')">${d.nombre}</span>${ref}${d.ean?`<span class="ean">SKU ${d.ean}</span>`:""}</td>
+          </span><span class="pname" title="Ver histórico de precio" onclick="verHistorico('${d.ean}')">${nombreLimpio(d.nombre)}</span>${ref}${d.ean?`<span class="ean">SKU ${d.ean}</span>`:""}</td>
         <td>${d.marca||"—"}</td>
-        <td class="r">${cell(d.precio_xtra,best,"SuperXtra",d.link_xtra,d.nombre_xtra)}</td>
-        <td class="r">${cell(d.precio_rey,best,"Super Rey",d.link_rey,d.nombre_rey)}</td>
-        <td class="r">${cell(d.precio_99,best,"Super99",d.link_99,d.nombre_99)}</td>
-        <td class="r">${cell(d.precio_carnes,best,"SuperCarnes",d.link_carnes,d.nombre_carnes)}</td>
-        <td class="r">${cell(d.precio_baru,best,"Super Barú",d.link_baru,d.nombre_baru)}</td>
-        <td class="r">${cell(d.precio_mach,best,"El Machetazo",d.link_mach,d.nombre_mach)}</td>
-        <td class="r">${cell(d.precio_riba,best,"Riba Smith",d.link_riba,d.nombre_riba)}</td>
-        <td class="c">${best?`<span class="chip ${chipClass(slugDe(best))}">${best}</span>`:'<span class="zero">—</span>'}</td>
+        <td class="precios">${preciosChips(d)}</td>
         <td class="r ${Number(d.ahorro_pct)>0?'pos':'zero'}">${d.ahorro_pct==null?'<span class="zero" title="solo está en una tienda retail">1 retail</span>':(Number(d.ahorro_pct)>0?money(d.ahorro_abs)+" ("+Number(d.ahorro_pct).toFixed(0)+"%)":"=")}</td>
       </tr>`;
-    }).join("") : `<tr><td colspan="10" class="empty">${
+    }).join("") : `<tr><td colspan="4" class="empty">${
       deals.length
         ? `No hay productos retail para comparar con estos filtros — esta selección aparece en una sola tienda retail.<br/>Revisa la pestaña <b>📋 Catálogo retail</b> o <b>🏭 Mayoristas</b>.`
         : "Sin coincidencias con estos filtros."
