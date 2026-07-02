@@ -1344,6 +1344,7 @@
     actualizarSysbar();
     render();
     animarKPIs();
+    if(vistaActual==='anal'){ renderAnalisis(); renderInsights(); }   // refrescar Insights al cambiar de categoría
     fxFade(document.getElementById('view-'+vistaActual));
   }
 
