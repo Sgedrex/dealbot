@@ -78,6 +78,7 @@
   .chip.super99{background:#f3e8ff;color:#7c3aed}.chip.supercarnes{background:#fef7c3;color:#a16207}
   .chip.superbaru{background:#dcfce7;color:#15803d}.chip.msmega{background:#e0f2fe;color:#0369a1}
   .chip.machetazo{background:#fee2e2;color:#b91c1c}
+  .chip.ribasmith{background:#ccfbf1;color:#0f766e}
   .tagref{display:inline-block;font-size:10px;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:4px;background:var(--card2)}
   .badge-may{display:inline-block;font-size:9px;font-weight:700;color:#0369a1;background:#e0f2fe;border-radius:5px;padding:1px 5px;margin-left:3px;vertical-align:middle}
   .tagpack{display:inline-block;font-size:10px;font-weight:700;color:#a16207;background:#fef7c3;border-radius:6px;padding:1px 6px;margin-left:4px}
@@ -408,7 +409,7 @@
         <thead><tr>
           <th class="name">Producto</th><th>Marca</th>
           <th class="r">SuperXtra</th><th class="r">Super Rey</th><th class="r">Super99</th>
-          <th class="r">S.Carnes</th><th class="r">S.Barú</th><th class="r">Machetazo</th>
+          <th class="r">S.Carnes</th><th class="r">S.Barú</th><th class="r">Machetazo</th><th class="r">Riba Smith</th>
           <th class="c">Más barato</th><th class="r">Ahorro</th>
         </tr></thead>
         <tbody id="comp-rows"><tr><td colspan="10" class="empty">Cargando…</td></tr></tbody>
@@ -585,9 +586,9 @@
   const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqa3BheHNwdGZtcGtndHltYnV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDc4NjksImV4cCI6MjA5NzgyMzg2OX0.7lzxj3AC3lo177Y8MjGN5wYs0p5p49gJkb22L2n9e0A";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
   const money = v => v==null ? "—" : "$" + Number(v).toFixed(2);
-  const tiendaNombre = { superxtra:"SuperXtra", superrey:"Super Rey", msmega:"MsMega", super99:"Super99", supercarnes:"SuperCarnes", superbaru:"Super Barú", machetazo:"El Machetazo" };
-  const chipClass = r => ({superxtra:'xtra',superrey:'rey',msmega:'msmega',super99:'super99',supercarnes:'supercarnes',superbaru:'superbaru',machetazo:'machetazo'})[r] || 'super99';
-  const slugDe = n => ({'SuperXtra':'superxtra','Super Rey':'superrey','Super99':'super99','SuperCarnes':'supercarnes','Super Barú':'superbaru','MsMega':'msmega','El Machetazo':'machetazo'})[n] || 'super99';
+  const tiendaNombre = { superxtra:"SuperXtra", superrey:"Super Rey", msmega:"MsMega", super99:"Super99", supercarnes:"SuperCarnes", superbaru:"Super Barú", machetazo:"El Machetazo", ribasmith:"Riba Smith" };
+  const chipClass = r => ({superxtra:'xtra',superrey:'rey',msmega:'msmega',super99:'super99',supercarnes:'supercarnes',superbaru:'superbaru',machetazo:'machetazo',ribasmith:'ribasmith'})[r] || 'super99';
+  const slugDe = n => ({'SuperXtra':'superxtra','Super Rey':'superrey','Super99':'super99','SuperCarnes':'supercarnes','Super Barú':'superbaru','MsMega':'msmega','El Machetazo':'machetazo','Riba Smith':'ribasmith'})[n] || 'super99';
   const CAT_ICON = { atun:'🥫', vegetales_enlatados:'🥬', sardinas:'🐟', cafe:'☕', arroz:'🍚' };
   const iconCat = slug => CAT_ICON[slug] || '🏷️';
 
@@ -599,7 +600,7 @@
   function verGana(ret){ filtroGana = ret; setView('comp'); render(); document.getElementById('view-comp').scrollIntoView({behavior:'smooth',block:'start'}); }
   function limpiarGana(){ filtroGana = null; render(); }
   const esMayorista = r => TIPO[r] === 'mayorista';
-  const COLORS = { superxtra:'#ea7a2b', superrey:'#db2777', super99:'#7c3aed', supercarnes:'#ca8a04', superbaru:'#15803d', msmega:'#0284c7', machetazo:'#dc2626' };
+  const COLORS = { superxtra:'#ea7a2b', superrey:'#db2777', super99:'#7c3aed', supercarnes:'#ca8a04', superbaru:'#15803d', msmega:'#0284c7', machetazo:'#dc2626', ribasmith:'#0d9488' };
   const num = v => v==null||v==='' ? '' : Number(v);
 
   // ===== Animaciones sutiles (Motion One — equivalente vanilla de Framer Motion) =====
@@ -804,7 +805,7 @@
   }
   function abrirCanasta(){
     abrir('ov-canasta');
-    const tiendas = [['superxtra','precio_xtra'],['superrey','precio_rey'],['super99','precio_99'],['supercarnes','precio_carnes'],['superbaru','precio_baru'],['machetazo','precio_mach']];
+    const tiendas = [['superxtra','precio_xtra'],['superrey','precio_rey'],['super99','precio_99'],['supercarnes','precio_carnes'],['superbaru','precio_baru'],['machetazo','precio_mach'],['ribasmith','precio_riba']];
     const items = [...canasta.values()];
     document.getElementById('canasta-items').innerHTML = items.length ? items.map(d=>
       `<div class="cline"><span>${d.nombre}</span><button class="iconbtn" onclick="toggleCanasta('${d.ean}');abrirCanasta()">✕</button></div>`).join("") : '<div class="empty">Canasta vacía.</div>';
@@ -832,7 +833,7 @@
   }
 
   // ===== Simulador de presupuesto (P5) — multi-categoría =====
-  const TIENDAS_CAMPO = [['superxtra','precio_xtra'],['superrey','precio_rey'],['super99','precio_99'],['supercarnes','precio_carnes'],['superbaru','precio_baru'],['machetazo','precio_mach']];
+  const TIENDAS_CAMPO = [['superxtra','precio_xtra'],['superrey','precio_rey'],['super99','precio_99'],['supercarnes','precio_carnes'],['superbaru','precio_baru'],['machetazo','precio_mach'],['ribasmith','precio_riba']];
   let compAll = null; const simCats = new Set();
   function abrirSim(){ abrir('ov-sim'); cargarSimYrender(); }
   async function cargarSimYrender(){
@@ -1243,7 +1244,7 @@
   }
 
   // nº de tiendas retail que tienen el producto (para excluir "1 retail" del comparador)
-  const nRetailCount = d => [d.precio_xtra,d.precio_rey,d.precio_99,d.precio_carnes,d.precio_baru,d.precio_mach].filter(p=>Number(p)>0).length;
+  const nRetailCount = d => [d.precio_xtra,d.precio_rey,d.precio_99,d.precio_carnes,d.precio_baru,d.precio_mach,d.precio_riba].filter(p=>Number(p)>0).length;
   // tamaño (g/ml) extraido del nombre, para NO comparar presentaciones distintas (ej. 22g vs 212g)
   function gramajeG(n){
     if(!n) return null; const s=(''+n).toLowerCase(); let m;
@@ -1255,9 +1256,9 @@
     return null;
   }
   function tamanoDispar(d){
-    const N=[d.nombre_xtra,d.nombre_rey,d.nombre_99,d.nombre_carnes,d.nombre_baru,d.nombre_mach];
-    const P=[d.precio_xtra,d.precio_rey,d.precio_99,d.precio_carnes,d.precio_baru,d.precio_mach];
-    const gs=[]; for(let i=0;i<6;i++){ if(Number(P[i])>0){ const g=gramajeG(N[i]||d.nombre); if(g) gs.push(g); } }
+    const N=[d.nombre_xtra,d.nombre_rey,d.nombre_99,d.nombre_carnes,d.nombre_baru,d.nombre_mach,d.nombre_riba];
+    const P=[d.precio_xtra,d.precio_rey,d.precio_99,d.precio_carnes,d.precio_baru,d.precio_mach,d.precio_riba];
+    const gs=[]; for(let i=0;i<7;i++){ if(Number(P[i])>0){ const g=gramajeG(N[i]||d.nombre); if(g) gs.push(g); } }
     if(gs.length<2) return false;
     return Math.max(...gs)/Math.min(...gs) > 1.4;   // >40% de diferencia de tamaño = no comparable
   }
@@ -1373,6 +1374,7 @@
         <td class="r">${cell(d.precio_carnes,best,"SuperCarnes",d.link_carnes,d.nombre_carnes)}</td>
         <td class="r">${cell(d.precio_baru,best,"Super Barú",d.link_baru,d.nombre_baru)}</td>
         <td class="r">${cell(d.precio_mach,best,"El Machetazo",d.link_mach,d.nombre_mach)}</td>
+        <td class="r">${cell(d.precio_riba,best,"Riba Smith",d.link_riba,d.nombre_riba)}</td>
         <td class="c">${best?`<span class="chip ${chipClass(slugDe(best))}">${best}</span>`:'<span class="zero">—</span>'}</td>
         <td class="r ${Number(d.ahorro_pct)>0?'pos':'zero'}">${d.ahorro_pct==null?'<span class="zero" title="solo está en una tienda retail">1 retail</span>':(Number(d.ahorro_pct)>0?money(d.ahorro_abs)+" ("+Number(d.ahorro_pct).toFixed(0)+"%)":"=")}</td>
       </tr>`;

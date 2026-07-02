@@ -111,7 +111,14 @@ async function fetchSuperBaru(term: string) {
   return results.filter((x: any) => x.price > 0);
 }
 
-// Riba Smith (premium): Magento GraphQL nativo. sku = codigo de barras (EAN) -> empareja directo.
+// Riba Smith (premium): Magento GraphQL. El sku es el EAN-13 SIN digito verificador (12 digitos);
+// se recalcula el check digit para reconstruir el EAN-13 y emparejar con las otras tiendas.
+function ean13(d: string): string {
+  if (!/^\d{12}$/.test(d)) return d;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += (+d[i]) * (i % 2 === 0 ? 1 : 3);
+  return d + String((10 - (sum % 10)) % 10);
+}
 async function fetchRibaSmith(term: string) {
   const query = "query S($s:String!,$pg:Int!){ products(search:$s, pageSize:50, currentPage:$pg){ items { name sku price_range { minimum_price { final_price { value } regular_price { value } } } } } }";
   const seen = new Set<string>(); const out: any[] = [];
@@ -121,7 +128,7 @@ async function fetchRibaSmith(term: string) {
     const json = await res.json();
     const items = json?.data?.products?.items ?? [];
     if (!items.length) break;
-    for (const p of items) { const sku = String(p.sku ?? ""); if (!sku || seen.has(sku)) continue; seen.add(sku); const mp = p.price_range?.minimum_price ?? {}; out.push({ retailer: "ribasmith", product_id: sku, ean: sku, nombre: p.name ?? "", marca: "", link: `https://www.ribasmith.com/catalogsearch/result/?q=${encodeURIComponent(p.name ?? "")}`, price: Number(mp.final_price?.value ?? 0), list_price: mp.regular_price?.value ? String(mp.regular_price.value) : "" }); }
+    for (const p of items) { const sku = String(p.sku ?? ""); if (!sku || seen.has(sku)) continue; seen.add(sku); const mp = p.price_range?.minimum_price ?? {}; out.push({ retailer: "ribasmith", product_id: sku, ean: ean13(sku), nombre: p.name ?? "", marca: "", link: `https://www.ribasmith.com/catalogsearch/result/?q=${encodeURIComponent(p.name ?? "")}`, price: Number(mp.final_price?.value ?? 0), list_price: mp.regular_price?.value ? String(mp.regular_price.value) : "" }); }
     if (items.length < 50) break;
   }
   return out.filter((x) => x.price > 0);
