@@ -68,15 +68,21 @@ async function fetchRey(term: string) {
 
 async function fetchMsMega(term: string) {
   const re = /codig=(\d+)[\s\S]*?color: RED; text-align: right;'>\$([0-9.]+)[\s\S]*?color: brown[^>]*>([^<]+)<\/td>/g;
-  const seen = new Set<string>(); const out: any[] = [];
+  const seen = new Set<string>(); const out: any[] = []; let lastHtml = "";
   const variants = Array.from(new Set([term.toLowerCase(), cap(term.toLowerCase())]));
   for (const t of variants) {
     const res = await fetch(`https://distlong.com/msmega/catalogo.php?lang=ES&pages=0&cinfo=${encodeURIComponent(t)}&grupo=&marca=`, { headers: { "user-agent": UA } });
     if (!res.ok) continue;
-    const html = await res.text(); let m: RegExpExecArray | null; re.lastIndex = 0;
+    const html = await res.text(); lastHtml = html; let m: RegExpExecArray | null; re.lastIndex = 0;
     while ((m = re.exec(html)) !== null) { const codig = m[1]; if (seen.has(codig)) continue; seen.add(codig); out.push({ retailer: "msmega", product_id: codig, ean: codig, nombre: m[3].trim(), marca: "", link: `https://distlong.com/msmega/catalogo.php?lang=ES&cinfo=${encodeURIComponent(m[3].trim())}`, price: Number(m[2]), list_price: "" }); }
   }
-  return out.filter((x) => x.price > 0);
+  let prods = out.filter((x) => x.price > 0);
+  // red de seguridad: regex sin resultados pero la pagina trae precios -> el formato cambio, extraer con IA
+  if (!prods.length && pareceTenerProductos(lastHtml)) {
+    prods = mapIA(await extraerConHaiku(recortarHtml(lastHtml, "codig="), "MsMega"), "msmega", (n) => `https://distlong.com/msmega/catalogo.php?lang=ES&cinfo=${encodeURIComponent(n)}`);
+    if (prods.length) rescates.add("MsMega");
+  }
+  return prods;
 }
 
 async function fetchSuper99(term: string) {
@@ -100,7 +106,29 @@ async function fetchSuperCarnes(term: string) {
   if (!res.ok) return [];
   const html = await res.text(); const chunks = html.split("product-item-info"); const seen = new Set<string>(); const out: any[] = [];
   for (const ch of chunks) { const nm = ch.match(/product-item-link"[^>]*>\s*([^<]+?)\s*</); const sku = ch.match(/"sku":"(\d{6,14})"/); const pr = ch.match(/data-price-amount="([0-9.]+)"/); if (!nm || !pr) continue; const ean = sku ? sku[1] : ""; const pid = ean || nm[1].trim(); if (seen.has(pid)) continue; seen.add(pid); out.push({ retailer: "supercarnes", product_id: pid, ean, nombre: nm[1].trim(), marca: "", link: `https://supercarnes.com/albrook/catalogsearch/result/?q=${encodeURIComponent(nm[1].trim())}`, price: Number(pr[1]), list_price: "" }); }
-  return out.filter((x) => x.price > 0);
+  let prods = out.filter((x) => x.price > 0);
+  // paginas chicas donde el chunk-parse falla: emparejar por POSICION (cada nombre toma el
+  // primer precio que aparece despues de el y antes del siguiente nombre; tolera ofertas con 2 precios)
+  if (!prods.length) {
+    const nms = [...html.matchAll(/product-item-link"[^>]*href="([^"]*)"[^>]*>\s*([^<]+?)\s*</g)];
+    const prs = [...html.matchAll(/data-price-amount="([0-9.]+)"/g)];
+    if (nms.length) {
+      prods = nms.map((nm, i) => {
+        const start = nm.index ?? 0;
+        const end = i + 1 < nms.length ? (nms[i + 1].index ?? html.length) : html.length;
+        const pr = prs.find((p) => (p.index ?? 0) > start && (p.index ?? 0) < end);
+        if (!pr) return null;
+        const slugEan = (nm[1].match(/(\d{6,14})(?:\.html)?\/?$/) || [])[1] || "";
+        return { retailer: "supercarnes", product_id: slugEan || nm[2].trim(), ean: slugEan, nombre: nm[2].trim(), marca: "", link: nm[1], price: Number(pr[1]), list_price: "" };
+      }).filter((x: any) => x && x.price > 0);
+    }
+  }
+  // red de seguridad: regex sin resultados pero la pagina trae precios -> el formato cambio, extraer con IA
+  if (!prods.length && pareceTenerProductos(html)) {
+    prods = mapIA(await extraerConHaiku(recortarHtml(html, "product-item"), "SuperCarnes"), "supercarnes", (n) => `https://supercarnes.com/albrook/catalogsearch/result/?q=${encodeURIComponent(n)}`);
+    if (prods.length) rescates.add("SuperCarnes");
+  }
+  return prods;
 }
 
 async function fetchSuperBaru(term: string) {
@@ -134,6 +162,45 @@ async function fetchRibaSmith(term: string) {
   return out.filter((x) => x.price > 0);
 }
 
+// ===== Extractor IA de respaldo (Haiku) =====
+// Entra SOLO si el regex de una tienda HTML devuelve 0 resultados pero la pagina trae precios
+// (= la web cambio de formato). Camino normal: regex, $0. Tope de llamadas por scan como guardia de gasto.
+const EXTRACT_MODEL = Deno.env.get("EXTRACT_MODEL") || "claude-haiku-4-5";
+let haikuUsos = 0; const HAIKU_MAX = 15;
+const rescates = new Set<string>();
+const pareceTenerProductos = (html: string) => ((html || "").match(/(?:data-price-amount|\$\s?\d+[.,]\d{2})/g) || []).length >= 3;
+function recortarHtml(html: string, marcador: string): string {
+  let s = (html || "").replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<svg[\s\S]*?<\/svg>/gi, "").replace(/<!--[\s\S]*?-->/g, "");
+  const i = s.indexOf(marcador);
+  if (i > 0) s = s.slice(Math.max(0, i - 2000));
+  return s.slice(0, 60000);
+}
+async function extraerConHaiku(html: string, tienda: string): Promise<any[]> {
+  const KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!KEY || !html || haikuUsos >= HAIKU_MAX) return [];
+  haikuUsos++;
+  const system = 'Extraes productos de HTML de paginas de supermercados. Responde UNICAMENTE un array JSON valido con esta forma: [{"nombre":"...","precio":1.23,"ean":"codigo de barras si aparece, o cadena vacia"}]. Incluye solo productos con precio visible. Nada de texto fuera del JSON.';
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model: EXTRACT_MODEL, max_tokens: 4000, system, messages: [{ role: "user", content: `HTML de resultados de busqueda de ${tienda}:\n${html}` }] }),
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    const texto = (Array.isArray(j.content) ? j.content.find((b: any) => b.type === "text")?.text : "") || "";
+    const m = texto.match(/\[[\s\S]*\]/);
+    if (!m) return [];
+    const arr = JSON.parse(m[0]);
+    return Array.isArray(arr) ? arr : [];
+  } catch (_e) { return []; }
+}
+function mapIA(arr: any[], retailer: string, linkDe: (nombre: string) => string) {
+  const seen = new Set<string>();
+  return arr.map((p: any) => ({ retailer, product_id: String(p.ean || p.nombre || "").trim().slice(0, 60), ean: String(p.ean || "").trim(), nombre: String(p.nombre || "").trim(), marca: "", link: linkDe(String(p.nombre || "")), price: Number(p.precio) || 0, list_price: "" }))
+    .filter((x: any) => x.price > 0 && x.product_id && !seen.has(x.product_id) && !!seen.add(x.product_id));
+}
+
 const FETCHERS = [fetchXtra, fetchMachetazo, fetchRey, fetchMsMega, fetchSuper99, fetchSuperCarnes, fetchSuperBaru, fetchRibaSmith];
 
 async function rpc(fn: string, args: any) {
@@ -151,6 +218,18 @@ async function sendTelegram(text: string) { if (!TG_TOKEN || !TG_CHAT) return; a
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const t0 = Date.now();
+  haikuUsos = 0; rescates.clear();
+  // modo prueba: compara regex vs extractor IA sobre HTML real, sin escribir en la BD
+  if (new URL(req.url).searchParams.get("probar") === "extractor") {
+    const scHtml = await fetch("https://supercarnes.com/albrook/catalogsearch/result/?q=atun", { headers: { "user-agent": UA } }).then((r) => r.ok ? r.text() : "").catch(() => "");
+    const scRegex = await fetchSuperCarnes("atun").catch(() => []);
+    const scIA = mapIA(await extraerConHaiku(recortarHtml(scHtml, "product-item"), "SuperCarnes"), "supercarnes", (n) => n);
+    const msHtml = await fetch("https://distlong.com/msmega/catalogo.php?lang=ES&pages=0&cinfo=atun&grupo=&marca=", { headers: { "user-agent": UA } }).then((r) => r.ok ? r.text() : "").catch(() => "");
+    const msRegex = await fetchMsMega("atun").catch(() => []);
+    const msIA = mapIA(await extraerConHaiku(recortarHtml(msHtml, "codig="), "MsMega"), "msmega", (n) => n);
+    const mini = (a: any[]) => a.slice(0, 3).map((x: any) => ({ n: x.nombre, p: x.price, e: x.ean }));
+    return new Response(JSON.stringify({ supercarnes: { regex: scRegex.length, ia: scIA.length, muestra_regex: mini(scRegex), muestra_ia: mini(scIA) }, msmega: { regex: msRegex.length, ia: msIA.length, muestra_regex: mini(msRegex), muestra_ia: mini(msIA) }, haiku_llamadas: haikuUsos, ms: Date.now() - t0 }), { headers: CORS });
+  }
   try {
     const cats = await getCategorias();
     if (!cats.length) return new Response(JSON.stringify({ ok: false, error: "sin categorias" }), { status: 400, headers: CORS });
@@ -179,7 +258,9 @@ Deno.serve(async (req: Request) => {
       await sendTelegram(`🔥 <b>DealBot · Caídas de precio</b>\n\n${lineas}\n\n📊 https://dealbot-atun.vercel.app`);
       for (const d of top) { await insertAlerta(d); alertados++; }
     }
-    return new Response(JSON.stringify({ ok: true, porCategoria: porCat, scrapeados: items.length, guardados, deals_detectados: deals.length, alertados, ms: Date.now() - t0 }), { headers: CORS });
+    // alertar solo ante rotura sistemica (3+ rescates = rediseno real), no por una pagina caprichosa aislada
+    if (rescates.size && haikuUsos >= 3) await sendTelegram(`🛠 <b>DealBot · Aviso técnico</b>\nEl formato de <b>${[...rescates].join(" y ")}</b> cambió — los precios se extrajeron con IA de respaldo (Haiku, ${haikuUsos} llamadas). Conviene actualizar el parser.`);
+    return new Response(JSON.stringify({ ok: true, porCategoria: porCat, scrapeados: items.length, guardados, deals_detectados: deals.length, alertados, rescates_ia: [...rescates], haiku_llamadas: haikuUsos, ms: Date.now() - t0 }), { headers: CORS });
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: CORS });
   }
