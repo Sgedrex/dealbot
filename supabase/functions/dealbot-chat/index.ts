@@ -82,12 +82,15 @@ Deno.serve(async (req: Request) => {
     if (marca) {
       const generic = ["cafe", "atun", "arroz", "sardina", "sardinas", "vegetales", "enlatados", "aceite", "pasta", "de", "la", "el", "los", "las", "marca", "mi"];
       const palabras = marca.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !generic.includes(w));
-      const term = palabras[0] || marca;
+      // filtrar por TODAS las palabras de la marca (AND) para no traer ruido (ej. "don" solo trae Don Pancho/Don Kat)
+      const filtros = (palabras.length ? palabras : [marca]).map((w) => `&nombre=ilike.*${encodeURIComponent(w)}*`).join("");
       try {
-        const mr = await fetch(`${SB_URL}/rest/v1/${P.comp}?select=nombre,tienda_mas_barata,${P.campos.map(([, f]: any) => f).join(",")}&nombre=ilike.*${encodeURIComponent(term)}*&limit=25`, { headers: h });
+        const mr = await fetch(`${SB_URL}/rest/v1/${P.comp}?select=nombre,tienda_mas_barata,${P.campos.map(([, f]: any) => f).join(",")}&limit=25${filtros}`, { headers: h });
         const filas = await mr.json().catch(() => []);
         if (Array.isArray(filas) && filas.length) {
           marcaDatos = `\n=== PRODUCTOS DE TU MARCA (${marca}) ===\n` + filas.map((c: any) => `- ${c.nombre}: ${precios(c)} | mas barato en ${c.tienda_mas_barata}`).join("\n");
+        } else {
+          marcaDatos = `\n=== PRODUCTOS DE TU MARCA (${marca}) ===\n(sin presencia detectada en la gondola online de las tiendas monitoreadas)`;
         }
       } catch (_e) { /* ignore */ }
       marcaCtx = `La marca o negocio del usuario es "${marca}". Cuando pregunte "donde estoy mas caro o barato", "como me posiciono", "mi marca" o similar, se refiere a ${marca}: usa los PRODUCTOS DE TU MARCA de abajo. NO le preguntes que marca vende. Si no hay productos de su marca en los datos, decilo claramente.`;

@@ -304,13 +304,19 @@
   .pm-cols{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;margin-bottom:12px}
   @media(max-width:640px){.pm-kpis{grid-template-columns:repeat(2,1fr)}.pm-cols{grid-template-columns:1fr}}
   .pm-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin-bottom:8px}
-  .pm-bar{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px}
+  .pm-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
+  .pm-bar .pos{width:20px;flex:none;text-align:center;font-weight:800;font-size:11px;color:var(--mut)}
   .pm-bar .nm{width:96px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
-  .pm-bar .track{flex:1;height:14px;background:var(--card2);border-radius:7px;overflow:hidden}
-  .pm-bar .fill{height:100%;background:var(--line);border-radius:7px}
+  .pm-bar .track{flex:1;height:15px;background:var(--card2);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .pm-bar .fill{display:block;height:100%;background:#7d8aa0;border-radius:7px;transition:width .4s ease}
   .pm-bar.me .fill{background:var(--green)}
   .pm-bar.me{color:var(--green-d)}
-  .pm-bar .pr{width:46px;flex:none;text-align:right;font-weight:800}
+  .pm-bar.me .pos{color:var(--green-d)}
+  .pm-bar .pr{width:58px;flex:none;text-align:right;font-weight:800}
+  .pm-bar .delta{width:86px;flex:none;text-align:right;font-size:10.5px;font-weight:700;color:var(--mut)}
+  .pm-bar .delta.lider{color:#ca8a04}
+  .pm-bar.me .delta{color:var(--green-d)}
+  @media(max-width:640px){.pm-bar .delta{display:none}}
   .pm-cob-chips{display:flex;flex-wrap:wrap;gap:6px}
   .pm-t{border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:11.5px;font-weight:700}
   .pm-t.on{border-color:var(--green);background:var(--greenbg);color:var(--green-d)}
@@ -1268,12 +1274,17 @@
     const cobertura = TCAMPOS.map(([c,nom])=>({ nom, on: mine.some(d=>Number(d[c])>0) }));
     const nCob = cobertura.filter(c=>c.on).length;
     const lider = [...ranking].sort((a,b)=>b.cob-a.cob)[0];
-    const maxAvg = ranking[ranking.length-1].avg || 1;
     let topR = ranking.slice(0,7);
     if(!topR.some(r=>_norm(r.m)===_norm(miMarca))) topR = ranking.slice(0,6).concat(ranking.filter(r=>_norm(r.m)===_norm(miMarca)));
+    const maxShown = Math.max(...topR.map(r=>r.avg)) || 1;
+    const liderPrecio = ranking[0];
+    const medallasPm = ['🥇','🥈','🥉'];
     const barras = topR.map(r=>{
       const me = _norm(r.m)===_norm(miMarca);
-      return `<div class="pm-bar ${me?'me':''}"><span class="nm">${me?'▸ ':''}${r.m}</span><span class="track"><span class="fill" style="width:${Math.max(6,Math.round(r.avg/maxAvg*100))}%"></span></span><span class="pr">${money(r.avg)}</span></div>`;
+      const posN = ranking.indexOf(r)+1;
+      const deltaPct = Math.round((r.avg-liderPrecio.avg)/liderPrecio.avg*100);
+      const delta = posN===1 ? '<span class="delta lider">líder 🏆</span>' : `<span class="delta">+${deltaPct}% vs líder</span>`;
+      return `<div class="pm-bar ${me?'me':''}"><span class="pos">${medallasPm[posN-1]||('#'+posN)}</span><span class="nm">${me?'▸ ':''}${r.m}</span><span class="track"><span class="fill" style="width:${Math.max(8,Math.round(r.avg/maxShown*100))}%"></span></span><span class="pr">${money(r.avg)}</span>${delta}</div>`;
     }).join('');
     const chips = cobertura.map(c=>`<span class="pm-t ${c.on?'on':'off'}">${c.nom}</span>`).join('');
     const insight = (vsCat<=0
