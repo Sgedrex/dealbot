@@ -79,6 +79,10 @@
   .chip.superbaru{background:#dcfce7;color:#15803d}.chip.msmega{background:#e0f2fe;color:#0369a1}
   .chip.machetazo{background:#fee2e2;color:#b91c1c}
   .chip.ribasmith{background:#ccfbf1;color:#0f766e}
+  .chip.exito{background:#fef9c3;color:#a16207}
+  .chip.carulla{background:#dcfce7;color:#15803d}
+  .chip.jumbo{background:#d1fae5;color:#065f46}
+  .chip.olimpica{background:#fee2e2;color:#b91c1c}
   /* chips de precio por tienda (comparador) */
   .precios{line-height:2}
   .pchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--card2);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800;margin:2px 5px 2px 0;text-decoration:none;color:var(--txt);white-space:nowrap;transition:.12s}
@@ -377,7 +381,7 @@
 
   <header>
     <div>
-      <h1>🛒 DealBot <span class="tag">PA</span></h1>
+      <h1>🛒 DealBot <span class="tag" id="pais-tag">PA</span></h1>
       <div class="sub" id="sub">Retail Price Intelligence Platform · Panamá</div>
     </div>
     <div class="sysbar">
@@ -629,10 +633,45 @@
   const SUPABASE_URL = "https://xjkpaxsptfmpkgtymbuu.supabase.co";
   const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqa3BheHNwdGZtcGtndHltYnV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDc4NjksImV4cCI6MjA5NzgyMzg2OX0.7lzxj3AC3lo177Y8MjGN5wYs0p5p49gJkb22L2n9e0A";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-  const money = v => v==null ? "—" : "$" + Number(v).toFixed(2);
-  const tiendaNombre = { superxtra:"SuperXtra", superrey:"Super Rey", msmega:"MsMega", super99:"Super99", supercarnes:"SuperCarnes", superbaru:"Super Barú", machetazo:"El Machetazo", ribasmith:"Riba Smith" };
-  const chipClass = r => ({superxtra:'xtra',superrey:'rey',msmega:'msmega',super99:'super99',supercarnes:'supercarnes',superbaru:'superbaru',machetazo:'machetazo',ribasmith:'ribasmith'})[r] || 'super99';
-  const slugDe = n => ({'SuperXtra':'superxtra','Super Rey':'superrey','Super99':'super99','SuperCarnes':'supercarnes','Super Barú':'superbaru','MsMega':'msmega','El Machetazo':'machetazo','Riba Smith':'ribasmith'})[n] || 'super99';
+  const money = v => v==null ? "—" : "$" + (CFG.decimales===0 ? Math.round(Number(v)).toLocaleString('es-CO') : Number(v).toFixed(CFG.decimales));
+  // ===== Configuración por país (una base, N países). El país lo decide el hostname (o ?pais=CO) =====
+  const PAISES = {
+    PA: {
+      nombre: 'Panamá', tag: 'PA', decimales: 2,
+      v: { comparador:'dealbot_comparador', deals:'dealbot_deals_actuales', ranking:'dealbot_ranking', inflacion:'dealbot_inflacion', movimientos:'dealbot_movimientos' },
+      scanUrl: 'https://xjkpaxsptfmpkgtymbuu.supabase.co/functions/v1/dealbot-scan',
+      chat: true, onboarding: true,
+      // [slug, campo precio, campo link, nombre visible, campo nombre, clase chip, color]
+      tiendas: [
+        ['superxtra','precio_xtra','link_xtra','SuperXtra','nombre_xtra','xtra','#ea7a2b'],
+        ['superrey','precio_rey','link_rey','Super Rey','nombre_rey','rey','#db2777'],
+        ['super99','precio_99','link_99','Super99','nombre_99','super99','#7c3aed'],
+        ['supercarnes','precio_carnes','link_carnes','SuperCarnes','nombre_carnes','supercarnes','#ca8a04'],
+        ['superbaru','precio_baru','link_baru','Super Barú','nombre_baru','superbaru','#15803d'],
+        ['machetazo','precio_mach','link_mach','El Machetazo','nombre_mach','machetazo','#dc2626'],
+        ['ribasmith','precio_riba','link_riba','Riba Smith','nombre_riba','ribasmith','#0d9488'],
+      ],
+      extras: { msmega: ['MsMega','msmega','#0284c7'] },
+    },
+    CO: {
+      nombre: 'Colombia', tag: 'CO', decimales: 0,
+      v: { comparador:'dealbot_comparador_co', deals:'dealbot_deals_actuales_co', ranking:'dealbot_ranking_co', inflacion:'dealbot_inflacion_co', movimientos:'dealbot_movimientos_co' },
+      scanUrl: 'https://xjkpaxsptfmpkgtymbuu.supabase.co/functions/v1/dealbot-scan-co',
+      chat: false, onboarding: false,   // v1 CO: asistente/onboarding llegan luego (contexto de chat es PA)
+      tiendas: [
+        ['exito','precio_exito','link_exito','Éxito','nombre_exito','exito','#facc15'],
+        ['carulla','precio_carulla','link_carulla','Carulla','nombre_carulla','carulla','#16a34a'],
+        ['jumbo','precio_jumbo','link_jumbo','Jumbo','nombre_jumbo','jumbo','#16803c'],
+        ['olimpica','precio_olimpica','link_olimpica','Olímpica','nombre_olimpica','olimpica','#dc2626'],
+      ],
+      extras: {},
+    },
+  };
+  const PAIS = location.hostname.includes('colombia') || new URLSearchParams(location.search).get('pais')==='CO' ? 'CO' : 'PA';
+  const CFG = PAISES[PAIS];
+  const tiendaNombre = Object.fromEntries([...CFG.tiendas.map(t=>[t[0],t[3]]), ...Object.entries(CFG.extras).map(([s,e])=>[s,e[0]])]);
+  const chipClass = r => (Object.fromEntries([...CFG.tiendas.map(t=>[t[0],t[5]]), ...Object.entries(CFG.extras).map(([s,e])=>[s,e[1]])]))[r] || CFG.tiendas[0][5];
+  const slugDe = n => (Object.fromEntries([...CFG.tiendas.map(t=>[t[3],t[0]]), ...Object.entries(CFG.extras).map(([s,e])=>[e[0],s])]))[n] || CFG.tiendas[0][0];
   const CAT_ICON = { atun:'🥫', vegetales_enlatados:'🥬', sardinas:'🐟', cafe:'☕', arroz:'🍚' };
   const iconCat = slug => CAT_ICON[slug] || '🏷️';
 
@@ -644,7 +683,7 @@
   function verGana(ret){ filtroGana = ret; setView('comp'); render(); document.getElementById('view-comp').scrollIntoView({behavior:'smooth',block:'start'}); }
   function limpiarGana(){ filtroGana = null; render(); }
   const esMayorista = r => TIPO[r] === 'mayorista';
-  const COLORS = { superxtra:'#ea7a2b', superrey:'#db2777', super99:'#7c3aed', supercarnes:'#ca8a04', superbaru:'#15803d', msmega:'#0284c7', machetazo:'#dc2626', ribasmith:'#0d9488' };
+  const COLORS = Object.fromEntries([...CFG.tiendas.map(t=>[t[0],t[6]]), ...Object.entries(CFG.extras).map(([s,e])=>[s,e[2]])]);
   const num = v => v==null||v==='' ? '' : Number(v);
 
   // ===== Animaciones sutiles (Motion One — equivalente vanilla de Framer Motion) =====
@@ -709,7 +748,7 @@
 
     // resumen del día
     const li = [
-      `Hoy se comparan <b>${compData.filter(esComparable).length}</b> productos de <b>${catN}</b> entre 7 supermercados.`,
+      `Hoy se comparan <b>${compData.filter(esComparable).length}</b> productos de <b>${catN}</b> entre ${CFG.tiendas.length} supermercados.`,
       masBarato ? `<b>${tn(masBarato.retailer)}</b> lidera en precios bajos (gana ${masBarato.veces_mas_barata}/${masBarato.productos} comparaciones).` : '',
       best ? `El mayor ahorro encontrado es <b>${Number(best.ahorro_pct).toFixed(0)}%</b> (${money(best.ahorro_abs)}) en ${best.nombre}.` : '',
       conAhorro.length ? `La oportunidad promedio es de <b>${money(avg)}</b> por producto; hay <b>${nDeals}</b> con descuento activo.` : `Aún no hay diferencias de precio comparables en ${catN}.`,
@@ -887,7 +926,7 @@
   }
   function abrirCanasta(){
     abrir('ov-canasta');
-    const tiendas = [['superxtra','precio_xtra'],['superrey','precio_rey'],['super99','precio_99'],['supercarnes','precio_carnes'],['superbaru','precio_baru'],['machetazo','precio_mach'],['ribasmith','precio_riba']];
+    const tiendas = CFG.tiendas.map(t=>[t[0],t[1]]);
     const items = [...canasta.values()];
     document.getElementById('canasta-items').innerHTML = items.length ? items.map(d=>
       `<div class="cline"><span>${d.nombre}</span><button class="iconbtn" onclick="toggleCanasta('${d.ean}');abrirCanasta()">✕</button></div>`).join("") : '<div class="empty">Canasta vacía.</div>';
@@ -915,13 +954,13 @@
   }
 
   // ===== Simulador de presupuesto (P5) — multi-categoría =====
-  const TIENDAS_CAMPO = [['superxtra','precio_xtra'],['superrey','precio_rey'],['super99','precio_99'],['supercarnes','precio_carnes'],['superbaru','precio_baru'],['machetazo','precio_mach'],['ribasmith','precio_riba']];
+  const TIENDAS_CAMPO = CFG.tiendas.map(t=>[t[0],t[1]]);
   let compAll = null; const simCats = new Set();
   function abrirSim(){ abrir('ov-sim'); cargarSimYrender(); }
   async function cargarSimYrender(){
     if(!compAll){
       document.getElementById('sim-res').innerHTML = '<div class="empty">Cargando catálogo de todas las categorías…</div>';
-      const { data } = await sb.from("dealbot_comparador").select("ean,categoria,precio_xtra,precio_rey,precio_99,precio_carnes,precio_baru,precio_mach");
+      const { data } = await sb.from(CFG.v.comparador).select("*");
       compAll = data || [];
     }
     if(simCats.size===0) CATS.forEach(c=>simCats.add(c.slug));   // todas activas por defecto
@@ -1091,7 +1130,7 @@
   document.addEventListener('click', e=>{ if(e.target.classList.contains('overlay')) e.target.classList.remove('open'); });
 
   // ===== Actualizar precios (dispara el scraping de las 6 tiendas) =====
-  const SCAN_URL = "https://xjkpaxsptfmpkgtymbuu.supabase.co/functions/v1/dealbot-scan";
+  const SCAN_URL = CFG.scanUrl;
   async function actualizar(){
     const b = document.getElementById('btn-upd');
     const orig = '▶ Ejecutar monitoreo';
@@ -1165,9 +1204,9 @@
   // ===== Modo consumidor / negocio (la eleccion del onboarding cambia la experiencia) =====
   let modoUsuario = 'consumidor';
   const MODO_TXT = {
-    consumidor: { badge:'🛒 Modo consumidor', sub:'Encontrá dónde ahorrar en tus compras · Panamá',
+    consumidor: { badge:'🛒 Modo consumidor', sub:'Encontrá dónde ahorrar en tus compras · '+CFG.nombre,
       kpis:{ 'k-prod':'Productos', 'k-match':'Para comparar', 'k-deals':'Ofertas de hoy', 'k-save':'Tu mayor ahorro' } },
-    negocio: { badge:'📊 Modo negocio', sub:'Monitoreá tu marca frente a la competencia · Panamá',
+    negocio: { badge:'📊 Modo negocio', sub:'Monitoreá tu marca frente a la competencia · '+CFG.nombre,
       kpis:{ 'k-prod':'Productos monitoreados', 'k-match':'Comparables', 'k-deals':'Oportunidades activas', 'k-save':'Máximo ahorro' } }
   };
   function aplicarModo(m, persistir){
@@ -1213,7 +1252,7 @@
     // ranking de marcas por precio promedio
     const byMarca = {};
     compData.forEach(d=>{ if(d.marca) (byMarca[d.marca] ??= []).push(d); });
-    const TCAMPOS = [['precio_xtra','SuperXtra'],['precio_rey','Super Rey'],['precio_99','Super99'],['precio_carnes','SuperCarnes'],['precio_baru','Super Barú'],['precio_mach','El Machetazo'],['precio_riba','Riba Smith']];
+    const TCAMPOS = CFG.tiendas.map(t=>[t[1],t[3]]);
     const ranking = Object.entries(byMarca).map(([m,arr])=>{
       const pr = arr.map(d=>Number(d.precio_min_retail)).filter(x=>x>0);
       const cob = TCAMPOS.filter(([c])=>arr.some(d=>Number(d[c])>0)).length;
@@ -1244,7 +1283,7 @@
       <div class="pm-head"><div class="pm-title">🎯 Tu marca: <b>${miMarca}</b></div><div class="pm-sub">en ${catActual?catActual.nombre:''} · foto de hoy</div></div>
       <div class="pm-kpis">
         <div class="pm-k"><div class="v">${mine.length}</div><div class="l">Mis productos</div></div>
-        <div class="pm-k"><div class="v">${nCob}/7</div><div class="l">Cobertura (tiendas)</div></div>
+        <div class="pm-k"><div class="v">${nCob}/${CFG.tiendas.length}</div><div class="l">Cobertura (tiendas)</div></div>
         <div class="pm-k"><div class="v" style="color:${vsCat<=0?'var(--green-d)':'#dc2626'}">${vsCat>0?'+':''}${vsCat}%</div><div class="l">vs. promedio categoría</div></div>
         <div class="pm-k"><div class="v">#${pos} de ${ranking.length}</div><div class="l">Posición de precio</div></div>
       </div>
@@ -1290,10 +1329,15 @@
   }
   async function init(){
     initDark(); initDensidad();
+    // ajustes por país
+    const ptag = document.getElementById('pais-tag'); if(ptag) ptag.textContent = CFG.tag;
+    document.title = 'DealBot ' + CFG.tag + ' · Retail Price Intelligence';
+    if(!CFG.chat){ const f=document.getElementById('chat-fab'); if(f) f.style.display='none'; }
+    if(!Object.keys(CFG.extras).length){ const tm=document.querySelector('.tab[data-v="may"]'); if(tm) tm.style.display='none'; }
     try{ const p = JSON.parse(localStorage.getItem('db_perfil')||'{}'); aplicarModo(p.modo||'consumidor', false); }catch(_e){ aplicarModo('consumidor', false); }
     const { data: tiendas } = await sb.from("dealbot_tiendas").select("retailer,tipo");
     TIPO = Object.fromEntries((tiendas||[]).map(t=>[t.retailer,t.tipo]));
-    const { data } = await sb.from("dealbot_categorias").select("slug,nombre,tiene_referencia,activo").eq("activo",true).order("orden");
+    const { data } = await sb.from("dealbot_categorias").select("slug,nombre,tiene_referencia,activo").eq("activo",true).eq("pais",PAIS).order("orden");
     CATS = data || [];
     pintarCats();
     const params = new URLSearchParams(location.search);
@@ -1316,11 +1360,11 @@
     document.getElementById("q").value = ""; document.getElementById("f-marca").value=""; document.getElementById("f-ref").value="";
 
     const [comp, deals, rank, infl, mov] = await Promise.all([
-      sb.from("dealbot_comparador").select("*").eq("categoria",slug).order("ahorro_pct",{ascending:false}),
-      sb.from("dealbot_deals_actuales").select("*").eq("categoria",slug).order("es_deal",{ascending:false}).order("desc_retailer_pct",{ascending:false}),
-      sb.from("dealbot_ranking").select("*").eq("categoria",slug),
-      sb.from("dealbot_inflacion").select("*").eq("categoria",slug).order("periodo"),
-      sb.from("dealbot_movimientos").select("*").eq("categoria",slug)
+      sb.from(CFG.v.comparador).select("*").eq("categoria",slug).order("ahorro_pct",{ascending:false}),
+      sb.from(CFG.v.deals).select("*").eq("categoria",slug).order("es_deal",{ascending:false}).order("desc_retailer_pct",{ascending:false}),
+      sb.from(CFG.v.ranking).select("*").eq("categoria",slug),
+      sb.from(CFG.v.inflacion).select("*").eq("categoria",slug).order("periodo"),
+      sb.from(CFG.v.movimientos).select("*").eq("categoria",slug)
     ]);
     compData = comp.data || []; dealsData = deals.data || [];
     rankData = rank.data || []; inflData = infl.data || []; movData = mov.data || [];
@@ -1384,7 +1428,7 @@
   }
 
   // nº de tiendas retail que tienen el producto (para excluir "1 retail" del comparador)
-  const nRetailCount = d => [d.precio_xtra,d.precio_rey,d.precio_99,d.precio_carnes,d.precio_baru,d.precio_mach,d.precio_riba].filter(p=>Number(p)>0).length;
+  const nRetailCount = d => CFG.tiendas.map(t=>d[t[1]]).filter(p=>Number(p)>0).length;
   // tamaño (g/ml) extraido del nombre, para NO comparar presentaciones distintas (ej. 22g vs 212g)
   function gramajeG(n){
     if(!n) return null; const s=(''+n).toLowerCase(); let m;
@@ -1396,23 +1440,15 @@
     return null;
   }
   function tamanoDispar(d){
-    const N=[d.nombre_xtra,d.nombre_rey,d.nombre_99,d.nombre_carnes,d.nombre_baru,d.nombre_mach,d.nombre_riba];
-    const P=[d.precio_xtra,d.precio_rey,d.precio_99,d.precio_carnes,d.precio_baru,d.precio_mach,d.precio_riba];
-    const gs=[]; for(let i=0;i<7;i++){ if(Number(P[i])>0){ const g=gramajeG(N[i]||d.nombre); if(g) gs.push(g); } }
+    const N=CFG.tiendas.map(t=>d[t[4]]);
+    const P=CFG.tiendas.map(t=>d[t[1]]);
+    const gs=[]; for(let i=0;i<CFG.tiendas.length;i++){ if(Number(P[i])>0){ const g=gramajeG(N[i]||d.nombre); if(g) gs.push(g); } }
     if(gs.length<2) return false;
     return Math.max(...gs)/Math.min(...gs) > 1.4;   // >40% de diferencia de tamaño = no comparable
   }
   const esComparable = d => nRetailCount(d)>=2 && !tamanoDispar(d);
   // Precios como chips (solo las tiendas que tienen el producto, ordenadas de más barato a más caro)
-  const TIENDAS_FULL = [
-    ['superxtra','precio_xtra','link_xtra','SuperXtra'],
-    ['superrey','precio_rey','link_rey','Super Rey'],
-    ['super99','precio_99','link_99','Super99'],
-    ['supercarnes','precio_carnes','link_carnes','SuperCarnes'],
-    ['superbaru','precio_baru','link_baru','Super Barú'],
-    ['machetazo','precio_mach','link_mach','El Machetazo'],
-    ['ribasmith','precio_riba','link_riba','Riba Smith'],
-  ];
+  const TIENDAS_FULL = CFG.tiendas.map(t=>[t[0],t[1],t[2],t[3]]);
   function preciosChips(d){
     const best = d.tienda_mas_barata;
     const arr = TIENDAS_FULL.map(([slug,pc,lc,nom])=>({slug,nom,precio:Number(d[pc]),link:d[lc]}))
@@ -1502,7 +1538,7 @@
     const dealsMay = dealsAll.filter(d=>esMayorista(d.retailer)); // mayoristas
 
     document.getElementById("k-prod").textContent = dealsAll.length;
-    document.getElementById("k-prod-s").textContent = (catActual?catActual.nombre:"") + " · 7 tiendas";
+    document.getElementById("k-prod-s").textContent = (catActual?catActual.nombre:"") + " · " + (CFG.tiendas.length + Object.keys(CFG.extras).length) + " tiendas";
     document.getElementById("k-match").textContent = comp.length;
     const pctMatch = dealsAll.length ? Math.round(comp.length/dealsAll.length*100) : 0;
     document.getElementById("k-match-s").textContent = comp.length ? pctMatch+"% emparejados por EAN" : "";
@@ -1512,7 +1548,7 @@
     const maxSave = conAhorro.reduce((m,d)=>Math.max(m, Number(d.ahorro_pct)||0),0);
     document.getElementById("k-save").textContent = maxSave>0 ? "−"+maxSave.toFixed(1)+"%" : "—";
     const avgAbs = conAhorro.length ? conAhorro.reduce((s,d)=>s+(Number(d.ahorro_abs)||0),0)/conAhorro.length : 0;
-    document.getElementById("k-save-s").textContent = avgAbs>0 ? "$"+avgAbs.toFixed(2)+" promedio" : "";
+    document.getElementById("k-save-s").textContent = avgAbs>0 ? money(avgAbs)+" promedio" : "";
 
     const esc = s => (s||"").replace(/"/g,"&quot;");
     const cell = (v,best,label,link,nat)=> v==null ? '<span class="dash">—</span>' : (
@@ -1628,6 +1664,7 @@
   const onbSel = new Set();
   let onbModoSel = '', onbCfg = null;
   function onbInit(){
+    if(!CFG.onboarding) return;   // el onboarding con IA es de la instancia PA por ahora
     document.getElementById('onb-cats').innerHTML = CATS.map(c=>
       `<span class="onb-chip" onclick="onbChip(this,'${c.slug}')">${iconCat(c.slug)} ${c.nombre}</span>`).join('');
     if(!localStorage.getItem('db_onboarded')) document.getElementById('onb').classList.add('open');
@@ -1693,7 +1730,7 @@
     document.getElementById('onb').classList.remove('open');
     // si se agregaron categorías nuevas (scrapeo bajo demanda), recargar la lista + catbar
     if(onbCfg && onbCfg.agregadas && onbCfg.agregadas.length){
-      const { data } = await sb.from("dealbot_categorias").select("slug,nombre,tiene_referencia,activo").eq("activo",true).order("orden");
+      const { data } = await sb.from("dealbot_categorias").select("slug,nombre,tiene_referencia,activo").eq("activo",true).eq("pais",PAIS).order("orden");
       CATS = data || [];
       pintarCats();
     }
