@@ -657,7 +657,8 @@
       nombre: 'Colombia', tag: 'CO', decimales: 0,
       v: { comparador:'dealbot_comparador_co', deals:'dealbot_deals_actuales_co', ranking:'dealbot_ranking_co', inflacion:'dealbot_inflacion_co', movimientos:'dealbot_movimientos_co' },
       scanUrl: 'https://xjkpaxsptfmpkgtymbuu.supabase.co/functions/v1/dealbot-scan-co',
-      chat: false, onboarding: false,   // v1 CO: asistente/onboarding llegan luego (contexto de chat es PA)
+      chat: true, onboarding: false,   // chat CO en vivo (dealbot-chat v7 multi-país); onboarding IA aún PA
+      marcaDefault: 'Don Sancho',
       tiendas: [
         ['exito','precio_exito','link_exito','Éxito','nombre_exito','exito','#facc15'],
         ['carulla','precio_carulla','link_carulla','Carulla','nombre_carulla','carulla','#16a34a'],
@@ -1334,6 +1335,11 @@
     document.title = 'DealBot ' + CFG.tag + ' · Retail Price Intelligence';
     if(!CFG.chat){ const f=document.getElementById('chat-fab'); if(f) f.style.display='none'; }
     if(!Object.keys(CFG.extras).length){ const tm=document.querySelector('.tab[data-v="may"]'); if(tm) tm.style.display='none'; }
+    // primera visita en una instancia con marca insignia: panel de marca preconfigurado
+    if(CFG.marcaDefault && !localStorage.getItem('db_perfil')){
+      localStorage.setItem('db_perfil', JSON.stringify({ modo:'negocio', marca:CFG.marcaDefault }));
+      localStorage.setItem('db_onboarded','1');
+    }
     try{ const p = JSON.parse(localStorage.getItem('db_perfil')||'{}'); aplicarModo(p.modo||'consumidor', false); }catch(_e){ aplicarModo('consumidor', false); }
     const { data: tiendas } = await sb.from("dealbot_tiendas").select("retailer,tipo");
     TIPO = Object.fromEntries((tiendas||[]).map(t=>[t.retailer,t.tipo]));
@@ -1644,7 +1650,7 @@
       const r = await fetch(CHAT_URL, {
         method:'POST',
         headers:{ 'content-type':'application/json', 'authorization':'Bearer '+SUPABASE_ANON, 'apikey':SUPABASE_ANON },
-        body: JSON.stringify({ pregunta: q, categoria: catActual ? catActual.slug : 'atun', modo: modoUsuario, marca: (()=>{ try{ return (JSON.parse(localStorage.getItem('db_perfil')||'{}').marca)||''; }catch(_e){ return ''; } })() })
+        body: JSON.stringify({ pregunta: q, categoria: catActual ? catActual.slug : 'atun', modo: modoUsuario, pais: PAIS, marca: (()=>{ try{ return (JSON.parse(localStorage.getItem('db_perfil')||'{}').marca)||''; }catch(_e){ return ''; } })() })
       });
       const j = await r.json();
       load.classList.remove('load');
