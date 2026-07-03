@@ -32,6 +32,16 @@ async function fetchVtexCO(t: { slug: string; api: string; dominio: string }, te
   return out;
 }
 
+// Makro CO: Instaleap (misma plataforma que Super Rey PA). ean llega como array. ARO/M&C = marcas blancas del usuario.
+async function fetchMakro(term: string) {
+  const body = [{ operationName: "SearchProducts", variables: { searchProductsInput: { clientId: "MAKRO", storeReference: "08DEL", currentPage: 1, pageSize: 50, search: { query: term } } }, query: "query SearchProducts($searchProductsInput: SearchProductsInput!) { searchProducts(searchProductsInput: $searchProductsInput) { products { sku ean name price stock isAvailable } } }" }];
+  const res = await fetch("https://nextgentheadless.instaleap.io/api/v3", { method: "POST", headers: { "content-type": "application/json", "dpl-api-key": "004e38b8-8d34-4fd2-81f1-036d3359beba", "apollographql-client-name": "e-commerce Moira Engine client MAKRO", "apollographql-client-version": "0.19.199" }, body: JSON.stringify(body) });
+  if (!res.ok) return [];
+  const json = await res.json();
+  const prods = json?.[0]?.data?.searchProducts?.products ?? [];
+  return prods.map((p: any) => ({ retailer: "makro", product_id: String(p.sku), ean: String(Array.isArray(p.ean) ? (p.ean[0] ?? "") : (p.ean ?? "")), nombre: p.name ?? "", marca: "", link: `https://tienda.makro.com.co/search?q=${encodeURIComponent(p.name ?? "")}`, price: Number(p.price ?? 0), list_price: "", disponible: p.isAvailable !== false && Number(p.stock ?? 1) > 0, pais: "CO" })).filter((x: any) => x.price > 0);
+}
+
 async function rpc(fn: string, args: any) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { "content-type": "application/json", apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}` }, body: JSON.stringify(args) });
   if (!res.ok) throw new Error(`rpc ${fn} ${res.status}: ${await res.text()}`);
@@ -52,7 +62,7 @@ Deno.serve(async (req: Request) => {
     for (const cat of cats) {
       const excl = (cat.excluir ?? []).map((e: string) => e.toLowerCase());
       const tasks: Promise<any[]>[] = [];
-      for (const term of cat.terminos) for (const t of TIENDAS) tasks.push(fetchVtexCO(t, term).catch(() => []));
+      for (const term of cat.terminos) { for (const t of TIENDAS) tasks.push(fetchVtexCO(t, term).catch(() => [])); tasks.push(fetchMakro(term).catch(() => [])); }
       const found = (await Promise.all(tasks)).flat();
       let added = 0;
       for (const it of found) {

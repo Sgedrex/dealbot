@@ -21,8 +21,8 @@ const CONF: Record<string, any> = {
   CO: {
     moneda: "pesos colombianos (COP)",
     rank: "dealbot_ranking_co", comp: "dealbot_comparador_co", may: null,
-    tn: { exito: "Éxito", carulla: "Carulla", jumbo: "Jumbo", olimpica: "Olímpica" },
-    campos: [["Éxito","precio_exito"],["Carulla","precio_carulla"],["Jumbo","precio_jumbo"],["Olímpica","precio_olimpica"]],
+    tn: { exito: "Éxito", carulla: "Carulla", jumbo: "Jumbo", olimpica: "Olímpica", makro: "Makro" },
+    campos: [["Éxito","precio_exito"],["Carulla","precio_carulla"],["Jumbo","precio_jumbo"],["Olímpica","precio_olimpica"],["Makro","precio_makro"]],
     pais: "Colombia",
   },
 };

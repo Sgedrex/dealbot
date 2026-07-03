@@ -83,6 +83,7 @@
   .chip.carulla{background:#dcfce7;color:#15803d}
   .chip.jumbo{background:#d1fae5;color:#065f46}
   .chip.olimpica{background:#fee2e2;color:#b91c1c}
+  .chip.makro{background:#dbeafe;color:#1d4ed8}
   /* chips de precio por tienda (comparador) */
   .precios{line-height:2}
   .pchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--card2);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800;margin:2px 5px 2px 0;text-decoration:none;color:var(--txt);white-space:nowrap;transition:.12s}
@@ -664,6 +665,7 @@
         ['carulla','precio_carulla','link_carulla','Carulla','nombre_carulla','carulla','#16a34a'],
         ['jumbo','precio_jumbo','link_jumbo','Jumbo','nombre_jumbo','jumbo','#16803c'],
         ['olimpica','precio_olimpica','link_olimpica','Olímpica','nombre_olimpica','olimpica','#dc2626'],
+        ['makro','precio_makro','link_makro','Makro','nombre_makro','makro','#1d4ed8'],
       ],
       extras: {},
     },
@@ -673,7 +675,7 @@
   const tiendaNombre = Object.fromEntries([...CFG.tiendas.map(t=>[t[0],t[3]]), ...Object.entries(CFG.extras).map(([s,e])=>[s,e[0]])]);
   const chipClass = r => (Object.fromEntries([...CFG.tiendas.map(t=>[t[0],t[5]]), ...Object.entries(CFG.extras).map(([s,e])=>[s,e[1]])]))[r] || CFG.tiendas[0][5];
   const slugDe = n => (Object.fromEntries([...CFG.tiendas.map(t=>[t[3],t[0]]), ...Object.entries(CFG.extras).map(([s,e])=>[e[0],s])]))[n] || CFG.tiendas[0][0];
-  const CAT_ICON = { atun:'🥫', vegetales_enlatados:'🥬', sardinas:'🐟', cafe:'☕', arroz:'🍚' };
+  const CAT_ICON = { atun:'🥫', vegetales_enlatados:'🥬', sardinas:'🐟', cafe:'☕', arroz:'🍚', duraznos:'🍑', ensaladas:'🥗', comida_mascotas:'🐱', avena:'🥣', harina:'🌾', pasta_tomate:'🍅', aceite_cocina:'🫒', pasta:'🍝', leche:'🥛' };
   const iconCat = slug => CAT_ICON[slug] || '🏷️';
 
   let CATS = [], catActual = null, compData = [], dealsData = [], TIPO = {}, vistaActual = 'comp';
