@@ -599,6 +599,13 @@
         </div>
       </div>
       <div class="cfg-row">
+        <label>¿Deseás recibir alertas de precios? (Telegram, 2× al día)</label>
+        <div class="cfg-seg">
+          <button id="cfg-al-si" onclick="cfgSetAlertas('on')">🔔 Sí</button>
+          <button id="cfg-al-no" onclick="cfgSetAlertas('off')">🔕 No</button>
+        </div>
+      </div>
+      <div class="cfg-row">
         <label>Tema</label>
         <button class="cfg-btn" onclick="toggleDark()">🌙 Alternar claro / oscuro</button>
       </div>
@@ -874,7 +881,7 @@
   async function dibujarHistProd(ean){
     const box = document.getElementById('infl-box');
     box.innerHTML = '<div class="ph" style="text-align:center;padding:26px 0">Cargando histórico…</div>';
-    const { data } = await sb.from('dealbot_historico').select('*').eq('ean', ean).order('capturado_at');
+    const { data } = await sb.from('dealbot_historico').select('*').eq('ean', ean).eq('pais', PAIS).order('capturado_at');
     const rows = data || [];
     const diaKey = ts => new Date(ts).toLocaleDateString('en-CA',{timeZone:'America/Panama'});
     const porT = {};
@@ -900,7 +907,7 @@
     const nombre = dd.nombre || ('SKU '+ean);
     document.getElementById('hist-titulo').textContent = '📈 '+nombre;
     abrir('ov-hist');
-    const { data } = await sb.from('dealbot_historico').select('*').eq('ean', ean).order('capturado_at');
+    const { data } = await sb.from('dealbot_historico').select('*').eq('ean', ean).eq('pais', PAIS).order('capturado_at');
     const rows = data || [];
     const dias = new Set(rows.map(r=>(r.capturado_at||'').slice(0,10))).size;
     document.getElementById('hist-sub').innerHTML = 'Evolución de precio por tienda · SKU '+ean +
@@ -1316,7 +1323,19 @@
     if(catActual) document.getElementById('cfg-cat').value = catActual.slug;
     let p={}; try{ p=JSON.parse(localStorage.getItem('db_perfil')||'{}'); }catch(_e){}
     document.getElementById('cfg-marca').value = p.marca || '';
+    cfgCargarAlertas();
     abrir('ov-config');
+  }
+  async function cfgCargarAlertas(){
+    const { data } = await sb.from('dealbot_config').select('valor').eq('clave','alertas_telegram').maybeSingle();
+    const on = !data || data.valor !== 'off';
+    document.getElementById('cfg-al-si').classList.toggle('on', on);
+    document.getElementById('cfg-al-no').classList.toggle('on', !on);
+  }
+  async function cfgSetAlertas(v){
+    document.getElementById('cfg-al-si').classList.toggle('on', v==='on');
+    document.getElementById('cfg-al-no').classList.toggle('on', v==='off');
+    await sb.from('dealbot_config').update({ valor: v }).eq('clave','alertas_telegram');
   }
   function cfgSetModo(m){
     aplicarModo(m, true);
