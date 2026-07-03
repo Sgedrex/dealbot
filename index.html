@@ -622,9 +622,9 @@
     </div>
   </div>
 
-  <footer>
-    DealBot · datos en vivo desde Supabase · SuperXtra · Super Rey · Super99 · SuperCarnes · Super Barú · El Machetazo · MsMega<br/>
-    Emparejado por código de barras. Actualización manual mientras se itera.
+  <footer id="pie">
+    DealBot · datos en vivo desde Supabase<br/>
+    Emparejado por código de barras. Actualización automática 2× al día.
   </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1346,6 +1346,8 @@
     // ajustes por país
     const ptag = document.getElementById('pais-tag'); if(ptag) ptag.textContent = CFG.tag;
     document.title = 'DealBot ' + CFG.tag + ' · Retail Price Intelligence';
+    const pie = document.getElementById('pie');
+    if(pie) pie.innerHTML = 'DealBot ' + CFG.tag + ' · datos en vivo desde Supabase · ' + Object.values(tiendaNombre).join(' · ') + '<br/>Emparejado por código de barras. Actualización automática 2× al día.';
     if(!CFG.chat){ const f=document.getElementById('chat-fab'); if(f) f.style.display='none'; }
     if(!Object.keys(CFG.extras).length){ const tm=document.querySelector('.tab[data-v="may"]'); if(tm) tm.style.display='none'; }
     // primera visita en una instancia con marca insignia: panel de marca preconfigurado
@@ -1663,7 +1665,7 @@
       const r = await fetch(CHAT_URL, {
         method:'POST',
         headers:{ 'content-type':'application/json', 'authorization':'Bearer '+SUPABASE_ANON, 'apikey':SUPABASE_ANON },
-        body: JSON.stringify({ pregunta: q, categoria: catActual ? catActual.slug : 'atun', modo: modoUsuario, pais: PAIS, marca: (()=>{ try{ return (JSON.parse(localStorage.getItem('db_perfil')||'{}').marca)||''; }catch(_e){ return ''; } })() })
+        body: JSON.stringify({ pregunta: q, categoria: catActual ? catActual.slug : 'atun', modo: modoUsuario, pais: PAIS, marca: (()=>{ try{ return (JSON.parse(localStorage.getItem('db_perfil')||'{}').marca) || CFG.marcaDefault || ''; }catch(_e){ return CFG.marcaDefault || ''; } })() })
       });
       const j = await r.json();
       load.classList.remove('load');
