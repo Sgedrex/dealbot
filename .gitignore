@@ -5,6 +5,3 @@ node_modules
 .env
 .env.local
 .playwright-mcp
-
-dealbot-colombia/
-dealbot-panama/
