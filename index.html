@@ -4,93 +4,142 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>DealBot · Retail Price Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <style>
   :root{
-    --bg:#eef3f0; --card:#ffffff; --card2:#f4f8f6; --line:#e4ebe7;
-    --txt:#102a1e; --mut:#6a7c73; --green:#15a34a; --green-d:#137a39;
-    --greenbg:#dcfce7; --accent:#15a34a;
-    --shadow:0 1px 2px rgba(16,42,30,.05), 0 2px 8px rgba(16,42,30,.05);
+    /* ===== Tokens de color ===== */
+    --bg:#e9edea; --card:#ffffff; --card2:#f4f6f5; --line:#dbe1de;
+    --txt:#1a2420; --mut:#5c6b66; --mut2:#8996a3;
+    --green:#0f8a4c; --green-d:#0b6b3b; --green-l:#e7f6ec;
+    --blue:#2f5fd6; --blue-l:#e8eefc;
+    --amber:#b5790a; --amber-l:#fbf0dd;
+    --red:#c23a3a; --red-l:#fbecec;
+    --accent:var(--green);
+    --greenbg:var(--green-l); /* alias retrocompatible: el resto del archivo aun referencia --greenbg */
+    /* ===== Radios por tipo de componente ===== */
+    --r-lg:16px; --r-md:12px; --r-btn:8px; --r-input:8px; --r-chip:6px;
+    /* ===== Sombras (3 niveles, uso limitado) ===== */
+    --shadow-sm:0 1px 2px rgba(16,24,21,.05), 0 3px 8px rgba(16,24,21,.05);
+    --shadow-md:0 3px 10px rgba(16,24,21,.08), 0 1px 3px rgba(16,24,21,.06);
+    --shadow-lg:0 18px 44px rgba(16,24,21,.18);
+    --shadow:var(--shadow-sm);
+    --font:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px;max-width:1120px;margin:0 auto;-webkit-font-smoothing:antialiased}
-  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 18px;box-shadow:var(--shadow)}
-  h1{font-size:20px;font-weight:800;letter-spacing:-.3px}
-  h1 .tag{background:var(--green);color:#fff;border-radius:7px;padding:1px 7px;font-size:15px;margin-left:2px}
-  .sub{color:var(--mut);font-size:11px;margin-top:3px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
-  .sysbar{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
-  .sys{display:flex;flex-direction:column;justify-content:center;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:5px 11px;min-width:80px}
-  .sys .sl{font-size:8.5px;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
-  .sys .sv{font-size:12px;color:var(--txt);font-weight:800;margin-top:1px}
-  .sys.on{flex-direction:row;align-items:center;gap:7px;background:var(--greenbg);border-color:#bbf7d0}
-  .sys.on .sv{color:var(--green-d)}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(21,163,74,.18);animation:pulse 2s infinite;flex:none}
+  body{background:var(--bg);color:var(--txt);font-family:var(--font);padding:16px;max-width:1180px;margin:0 auto;-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.45}
+  svg.lucide{width:15px;height:15px;stroke-width:2;flex:none;vertical-align:-3px}
+  button,input,select{font-family:var(--font)}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:13px 20px;box-shadow:var(--shadow-md)}
+  .hd-left{display:flex;flex-direction:column;gap:1px}
+  h1{font-size:19px;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
+  h1 .logomark{color:var(--green-d);flex:none}
+  h1 .tag{background:var(--green-l);color:var(--green-d);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;letter-spacing:.3px}
+  h1 .tag-switch{cursor:pointer;transition:.12s}
+  h1 .tag-switch:hover{background:var(--green);color:#fff}
+  .sub{color:var(--mut);font-size:11.5px;margin-top:1px;font-weight:500}
+  .hd-status{display:flex;align-items:center;gap:16px;background:var(--card2);border:1px solid var(--line);border-radius:var(--r-md);padding:7px 16px}
+  .hd-status .st-item{display:flex;flex-direction:column;line-height:1.25}
+  .hd-status .st-l{font-size:9.5px;color:var(--mut2);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+  .hd-status .st-v{font-size:12px;color:var(--txt);font-weight:600;margin-top:1px;display:flex;align-items:center;gap:5px}
+  .hd-status .stdiv{width:1px;align-self:stretch;background:var(--line)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-l);animation:pulse 2s infinite;flex:none}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .hd-actions{display:flex;align-items:center;gap:6px}
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
-  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green);opacity:0;transition:.2s}
-  .kpi:hover::before{opacity:.55}
-  .kpi .n{font-size:24px;font-weight:800;letter-spacing:-.5px}.kpi.deal .n{color:var(--green)}
-  .kpi .l{font-size:10.5px;color:var(--mut);margin-top:3px;font-weight:600}
-  .kpi .s{font-size:10px;color:var(--green-d);margin-top:7px;font-weight:700;background:var(--greenbg);display:inline-block;padding:2px 7px;border-radius:6px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:13px 15px;position:relative;box-shadow:var(--shadow-sm)}
+  .kpi:hover{border-color:#c7d6cd}
+  .kpi .n{font-size:22px;font-weight:700;letter-spacing:-.4px;display:flex;align-items:center;gap:7px}
+  .kpi .n svg{color:var(--mut2);width:16px;height:16px}
+  .kpi.deal .n{color:var(--green-d)}
+  .kpi .l{font-size:12px;color:var(--mut);margin-top:4px;font-weight:500}
+  .kpi .s{font-size:11px;color:var(--mut);margin-top:6px;font-weight:500}
   .kpi .s:empty{display:none}
   .filtros{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center}
-  .catwrap{display:flex;align-items:center;gap:6px;margin-bottom:12px}
-  .catbar{display:flex;gap:7px;flex-wrap:nowrap;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;flex:1}
+  .catwrap{display:flex;align-items:center;gap:6px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+  .catbar{display:flex;gap:2px;flex-wrap:nowrap;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;flex:1}
   .catbar::-webkit-scrollbar{display:none}
   .catbar .cat{flex:none;white-space:nowrap}
-  .catarr{display:flex;flex:none;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--card);border-radius:9px;width:32px;height:38px;font-size:20px;line-height:1;cursor:pointer;color:var(--mut);box-shadow:var(--shadow);padding:0}
+  .catarr{display:flex;flex:none;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--card);border-radius:var(--r-btn);width:28px;height:30px;line-height:1;cursor:pointer;color:var(--mut);padding:0;margin-bottom:6px}
   .catarr:hover{border-color:var(--green);color:var(--green-d)}
   @media(max-width:560px){.catarr{display:none !important}}
-  .cat{background:var(--card);border:1px solid var(--line);color:var(--mut);border-radius:10px;padding:9px 15px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
-  .cat:hover{border-color:#bbf7d0;color:var(--txt)}
-  .cat.active{background:var(--green);color:#fff;border-color:var(--green)}
-  input,select{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:9px 12px;font-size:13px;outline:none;box-shadow:var(--shadow)}
+  .cat{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--mut);border-radius:0;padding:9px 12px;font-size:13px;font-weight:600;cursor:pointer;transition:.12s}
+  .cat:hover{color:var(--txt);border-bottom-color:var(--line)}
+  .cat.active{color:var(--green-d);border-bottom-color:var(--green);background:var(--green-l);border-radius:6px 6px 0 0}
+  input,select{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:var(--r-input);padding:8px 12px;font-size:13px;outline:none}
   input{flex:1;min-width:160px}
-  input:focus,select:focus{border-color:var(--green)}
-  input::placeholder{color:var(--mut)}
-  .tabs{display:flex;gap:8px;margin-bottom:12px;align-items:center}
-  .tab{background:var(--card);border:1px solid var(--line);color:var(--mut);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
-  .tab:hover{color:var(--txt)}
-  .tab.active{background:var(--green);color:#fff;border-color:var(--green)}
-  .btn-exp{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--shadow)}
+  input:focus,select:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--green-l)}
+  input::placeholder{color:var(--mut2)}
+  .tabs{display:flex;gap:6px;margin-bottom:12px;align-items:center}
+  .tab{background:transparent;border:1px solid transparent;color:var(--mut);border-radius:var(--r-btn);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;transition:.12s;display:inline-flex;align-items:center;gap:6px}
+  .tab:hover{color:var(--txt);background:var(--card2)}
+  .tab.active{background:var(--green-l);color:var(--green-d);border-color:transparent;box-shadow:var(--shadow-sm)}
+  .btn-exp{background:var(--card);border:1px solid var(--line);color:var(--mut);border-radius:var(--r-btn);padding:8px 12px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
   .btn-exp:hover{border-color:var(--green);color:var(--green-d)}
-  .btn-upd{background:var(--green);border:1px solid var(--green);color:#fff;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--shadow)}
-  .btn-upd:hover{background:var(--green-d)}
-  .btn-upd:disabled{opacity:.7;cursor:wait}
+  .btn-exp.on{background:var(--green-l);border-color:var(--green);color:var(--green-d)}
+  .btn-sec{background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:var(--r-btn);padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:var(--shadow-sm)}
+  .btn-sec:hover{border-color:#c7d6cd;background:var(--card);box-shadow:var(--shadow-md)}
+  .btn-upd{background:var(--green);border:1px solid var(--green);color:#fff;border-radius:var(--r-btn);padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:var(--shadow-md)}
+  .btn-upd:hover{background:var(--green-d);border-color:var(--green-d);box-shadow:var(--shadow-lg)}
+  .btn-upd:disabled{opacity:.6;cursor:wait}
   .acciones{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center}
-  .iconact{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--card);border-radius:10px;font-size:15px;cursor:pointer;color:var(--txt);box-shadow:var(--shadow);padding:0;transition:.15s}
+  .iconact{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--card);border-radius:var(--r-btn);cursor:pointer;color:var(--mut);padding:0;transition:.12s}
   .iconact:hover{border-color:var(--green);color:var(--green-d)}
-  .adiv{width:1px;height:24px;background:var(--line);margin:0 3px}
+  .adiv{width:1px;height:22px;background:var(--line);margin:0 2px}
   .view{display:none}.view.active{display:block}
-  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:var(--shadow)}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--card);box-shadow:var(--shadow-sm)}
   table{width:100%;border-collapse:collapse;background:var(--card);min-width:760px}
   th,td{padding:11px 12px;text-align:left;font-size:13px;border-bottom:1px solid var(--line);white-space:nowrap}
-  th{color:var(--mut);font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;position:sticky;top:0;background:var(--card2)}
-  td.name,th.name{white-space:normal;min-width:210px}
-  tbody tr:nth-child(even){background:#fafcfb}
-  tbody tr:hover{background:#f0fbf4}
+  th{color:var(--mut);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.5px;position:sticky;top:0;background:var(--card2)}
+  td.name,th.name{white-space:normal;min-width:260px}
+  tbody tr:hover{background:var(--card2)}
   tr:last-child td{border-bottom:none}
   td.r,th.r{text-align:right}td.c,th.c{text-align:center}
-  .best{background:var(--greenbg);font-weight:800;color:var(--green-d);border-radius:7px;padding:2px 7px}
-  .pos{color:var(--green-d);font-weight:700}.zero{color:var(--mut)}
-  .chip{display:inline-block;font-size:10.5px;font-weight:700;border-radius:7px;padding:2px 8px}
-  .chip.xtra{background:#fff0e3;color:#c2410c}.chip.rey{background:#fde7ef;color:#be185d}
-  .chip.super99{background:#f3e8ff;color:#7c3aed}.chip.supercarnes{background:#fef7c3;color:#a16207}
-  .chip.superbaru{background:#dcfce7;color:#15803d}.chip.msmega{background:#e0f2fe;color:#0369a1}
-  .chip.machetazo{background:#fee2e2;color:#b91c1c}
-  .chip.ribasmith{background:#ccfbf1;color:#0f766e}
-  .chip.exito{background:#fef9c3;color:#a16207}
-  .chip.carulla{background:#dcfce7;color:#15803d}
-  .chip.jumbo{background:#d1fae5;color:#065f46}
-  .chip.olimpica{background:#fee2e2;color:#b91c1c}
-  .chip.makro{background:#dbeafe;color:#1d4ed8}
-  /* chips de precio por tienda (comparador) */
+  .best{background:var(--green-l);font-weight:700;color:var(--green-d);border-radius:var(--r-chip);padding:2px 7px}
+  .pos{color:var(--green-d);font-weight:600}.zero{color:var(--mut2)}
+  /* Identidad por retailer: acento de color como borde izquierdo, no relleno completo (RetailPriceBadge) */
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;border-radius:var(--r-chip);padding:2px 8px 2px 7px;background:var(--card2);color:var(--txt);border-left:3px solid var(--mut2)}
+  .chip.xtra{border-left-color:#ea7a2b}.chip.rey{border-left-color:#db2777}
+  .chip.super99{border-left-color:#7c3aed}.chip.supercarnes{border-left-color:#ca8a04}
+  .chip.superbaru{border-left-color:#15803d}.chip.msmega{border-left-color:#0284c7}
+  .chip.machetazo{border-left-color:#dc2626}
+  .chip.ribasmith{border-left-color:#0d9488}
+  .chip.exito{border-left-color:#d1a900}
+  .chip.carulla{border-left-color:#16a34a}
+  .chip.jumbo{border-left-color:#16803c}
+  .chip.olimpica{border-left-color:#dc2626}
+  .chip.makro{border-left-color:#1d4ed8}
+  /* chips de precio por tienda (comparador) — RetailPriceBadge */
   .precios{line-height:2}
-  .pchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--card2);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800;margin:2px 5px 2px 0;text-decoration:none;color:var(--txt);white-space:nowrap;transition:.12s}
-  .pchip .ps{font-weight:600;color:var(--mut);font-size:10.5px}
-  .pchip.best{border-color:var(--green);background:var(--greenbg);color:var(--green-d)}
+  .pchip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-left:3px solid var(--mut2);background:var(--card);border-radius:var(--r-chip);padding:3px 9px 3px 7px;font-size:12px;font-weight:700;margin:2px 5px 2px 0;text-decoration:none;color:var(--txt);white-space:nowrap;transition:.12s;box-shadow:var(--shadow-sm)}
+  .pchip .ps{font-weight:500;color:var(--mut);font-size:10.5px}
+  .pchip.best{border-color:var(--green);background:var(--green-l);color:var(--green-d)}
   .pchip.best .ps{color:var(--green-d)}
-  .pchip:hover{border-color:var(--green);transform:translateY(-1px)}
+  .pchip:hover{border-color:#a9bdb4;background:var(--card2);box-shadow:var(--shadow-md);transform:translateY(-1.5px)}
+  .pchip.best:hover{border-color:var(--green-d);background:var(--green-l);box-shadow:var(--shadow-md);transform:translateY(-1.5px)}
+  .pchip.xtra{border-left-color:#ea7a2b}.pchip.rey{border-left-color:#db2777}
+  .pchip.super99{border-left-color:#7c3aed}.pchip.supercarnes{border-left-color:#ca8a04}
+  .pchip.superbaru{border-left-color:#15803d}.pchip.msmega{border-left-color:#0284c7}
+  .pchip.machetazo{border-left-color:#dc2626}.pchip.ribasmith{border-left-color:#0d9488}
+  .pchip.exito{border-left-color:#d1a900}.pchip.carulla{border-left-color:#16a34a}
+  .pchip.jumbo{border-left-color:#16803c}.pchip.olimpica{border-left-color:#dc2626}
+  .pchip.makro{border-left-color:#1d4ed8}
+  .pchip.best{border-left-color:var(--green) !important}
+  /* inicial de tienda: refuerza identidad de retailer mas alla del borde de color */
+  .plogo{width:14px;height:14px;object-fit:contain;border-radius:3px;flex:none;background:#fff;padding:1px}
+  .plogo.carulla{background:#16a34a}
+  .plogo.jumbo{background:#16803c}
+  .pinit{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;color:#fff;font-size:8px;font-weight:800;flex:none}
+  .pinit.xtra{background:#ea7a2b}.pinit.rey{background:#db2777}
+  .pinit.super99{background:#7c3aed}.pinit.supercarnes{background:#ca8a04}
+  .pinit.superbaru{background:#15803d}.pinit.msmega{background:#0284c7}
+  .pinit.machetazo{background:#dc2626}.pinit.ribasmith{background:#0d9488}
+  .pinit.exito{background:#d1a900}.pinit.carulla{background:#16a34a}
+  .pinit.jumbo{background:#16803c}.pinit.olimpica{background:#dc2626}
+  .pinit.makro{background:#1d4ed8}
   .tagref{display:inline-block;font-size:10px;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:4px;background:var(--card2)}
   .badge-may{display:inline-block;font-size:9px;font-weight:700;color:#0369a1;background:#e0f2fe;border-radius:5px;padding:1px 5px;margin-left:3px;vertical-align:middle}
   .tagpack{display:inline-block;font-size:10px;font-weight:700;color:#a16207;background:#fef7c3;border-radius:6px;padding:1px 6px;margin-left:4px}
@@ -112,7 +161,8 @@
   /* analisis: ranking */
   .analwrap{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
-  .panel h3{font-size:14px;font-weight:800;margin-bottom:4px}
+  .panel h3{font-size:14px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:7px}
+  .panel h3 svg{color:var(--mut2);width:15px;height:15px}
   .panel .ph{font-size:11px;color:var(--mut);margin-bottom:12px}
   .rank{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
   .rank:last-child{border-bottom:none}
@@ -122,7 +172,7 @@
   .rank .bar i{display:block;height:100%;background:var(--green);border-radius:6px}
   .rank .meta{font-size:11px;color:var(--mut)}
   /* canasta */
-  .canasta-fab{position:fixed;right:18px;bottom:18px;background:var(--green);color:#fff;border:none;border-radius:999px;padding:13px 18px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(21,163,74,.4);z-index:40}
+  .canasta-fab{position:fixed;right:18px;bottom:18px;background:var(--green);color:#fff;border:none;border-radius:999px;padding:12px 18px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-lg);z-index:40;display:inline-flex;align-items:center;gap:8px}
   .overlay{position:fixed;inset:0;background:rgba(16,42,30,.55);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;z-index:50;padding:16px;animation:ovfade .2s ease}
   .overlay.open{display:flex}
   @keyframes ovfade{from{opacity:0}to{opacity:1}}
@@ -146,14 +196,33 @@
   .cstore{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:10px}
   .cstore .row2{display:flex;justify-content:space-between;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:600}
   .cstore .row2.win{background:var(--greenbg);border-color:var(--green);color:var(--green-d);font-weight:800}
+  /* desglose de canasta por tienda (que tiene / que falta) */
+  .cbk{border:1px solid var(--line);border-radius:10px}
+  .cbk summary{list-style:none;cursor:pointer;padding:9px 12px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .cbk summary::-webkit-details-marker{display:none}
+  .cbk summary::after{content:'▾';font-size:10px;color:var(--mut);margin-left:8px;transition:transform .15s}
+  .cbk[open] summary::after{transform:rotate(180deg)}
+  .cbk.win summary{background:var(--greenbg);color:var(--green-d);font-weight:800;border-radius:9px 9px 0 0}
+  .cbk-detail{padding:2px 12px 10px;border-top:1px solid var(--line)}
+  .cbk-item{display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:12px}
+  .cbk-item.miss{color:var(--mut)}
+  .cbk-item b{white-space:nowrap}
   @media(max-width:560px){.kpis{grid-template-columns:repeat(2,1fr)}.analwrap{grid-template-columns:1fr}}
   /* ===== P2 · UX ===== */
-  .filtros input#q{flex:1.6;min-width:220px;padding:12px 15px;font-size:14px;font-weight:600;border-radius:12px}
-  .expgroup{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;padding-left:8px;border-left:1px solid var(--line)}
-  .filtros input#q:focus{box-shadow:0 0 0 4px rgba(21,163,74,.12)}
-  .cat{transition:transform .14s ease, background .14s, border-color .14s, color .14s}
-  .cat .ci{margin-right:5px;font-size:14px}
-  .cat.active{transform:translateY(-2px) scale(1.05)}
+  .searchbox{position:relative;flex:1.6;min-width:220px}
+  .searchbox svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--mut2);pointer-events:none}
+  .searchbox input{width:100%;padding:9px 12px 9px 34px;font-size:13.5px;font-weight:500}
+  /* menu Exportar: agrupa Compartir/Excel/PDF en un solo control */
+  .expmenu{position:relative;margin-left:auto}
+  .expmenu-list{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-lg);padding:6px;min-width:180px;z-index:30}
+  .expmenu-list.open{display:block}
+  .expmenu-list button{display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;color:var(--txt);font-size:13px;font-weight:500;padding:8px 10px;border-radius:7px;cursor:pointer;text-align:left}
+  .expmenu-list button:hover{background:var(--card2)}
+  .cat{transition:border-color .12s, color .12s}
+  .cat{display:inline-flex;align-items:center}
+  .cat .ci{display:inline-flex;margin-right:6px;color:var(--mut2)}
+  .cat.active .ci{color:var(--green-d)}
+  .simchip,.onb-chip{display:inline-flex;align-items:center;gap:6px}
   .tablewrap{overflow:auto;max-height:72vh}
   th{z-index:2}
   td.name,th.name{position:sticky;left:0;background:var(--card)}
@@ -181,16 +250,18 @@
   @media(max-width:560px){.insight-cards{grid-template-columns:repeat(2,1fr)}}
   /* ===== P7 · Dark mode + extras ===== */
   body{transition:background .25s,color .25s}
-  body.dark{--bg:#0d1411;--card:#161f1b;--card2:#1b261f;--line:#283831;--txt:#e7f0ea;--mut:#8ba398;--green:#22c55e;--green-d:#4ade80;--greenbg:#14361f;--accent:#22c55e;--shadow:0 1px 2px rgba(0,0,0,.3),0 2px 8px rgba(0,0,0,.25)}
+  body.dark{--bg:#0d1411;--card:#161f1b;--card2:#1b261f;--line:#283831;--txt:#e7f0ea;--mut:#8ba398;--mut2:#6b8178;--green:#22c55e;--green-d:#4ade80;--green-l:#14361f;--greenbg:#14361f;--blue:#5b8def;--blue-l:#16233a;--amber:#e0ac3f;--amber-l:#33290f;--red:#e0625f;--red-l:#331717;--accent:#22c55e;--shadow-sm:0 1px 2px rgba(0,0,0,.35);--shadow-md:0 2px 8px rgba(0,0,0,.3);--shadow-lg:0 20px 50px rgba(0,0,0,.5);--shadow:var(--shadow-sm)}
   body.dark .ai-summary{background:linear-gradient(135deg,#14361f,#16211c)}
   body.dark tbody tr:nth-child(even),body.dark tbody tr:nth-child(even) td.name{background:#18221d}
   body.dark tbody tr:hover td,body.dark tbody tr:hover td.name{background:#1e2e26}
-  body.dark .savechip,body.dark .kpi .s{background:#14361f}
-  .icontop{border:1px solid var(--line);background:var(--card2);border-radius:10px;padding:6px 11px;font-size:14px;cursor:pointer;color:var(--txt);box-shadow:var(--shadow)}
-  .icontop:hover{border-color:var(--green)}
+  body.dark .savechip{background:#14361f}
+  .icontop{border:1px solid var(--line);background:var(--card2);border-radius:var(--r-btn);width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--mut);padding:0;box-shadow:var(--shadow-sm)}
+  .icontop:hover{border-color:var(--green);color:var(--green-d)}
   .btn-exp.on{background:var(--green);color:#fff;border-color:var(--green)}
   .skelrow{height:42px;background:linear-gradient(90deg,var(--card2) 25%,var(--line) 50%,var(--card2) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:8px;margin:8px 12px}
   @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spin{animation:spin .8s linear infinite}
   .ptienda{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
   .ptienda .pt{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:5px 10px;font-size:11px;font-weight:700;box-shadow:var(--shadow)}
   .ptienda .pt b{color:var(--green-d)}
@@ -219,11 +290,14 @@
   /* comparador VS: frase resumen */
   .vsfrase{background:var(--greenbg);color:var(--green-d);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px;text-align:center;font-weight:600;line-height:1.4}
   .altipo{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--mut);margin-left:4px}
-  /* badge de modo (consumidor / negocio) */
-  .modobadge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--txt);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:800;cursor:pointer;box-shadow:var(--shadow);transition:.15s;white-space:nowrap}
-  .modobadge:hover{transform:translateY(-1px)}
-  body.modo-consumidor .modobadge{border-color:var(--green);color:var(--green-d)}
-  body.modo-negocio .modobadge{border-color:#2563eb;color:#2563eb}
+  /* selector de modo (consumidor / negocio) — segmented control, no botón CTA */
+  .mode-seg{display:inline-flex;background:var(--card2);border:1px solid var(--line);border-radius:var(--r-btn);padding:2px;gap:2px}
+  .mode-seg-btn{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;color:var(--mut);border-radius:6px;padding:6px 11px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .mode-seg-btn span{display:none}
+  @media(min-width:900px){.mode-seg-btn span{display:inline}}
+  .mode-seg-btn.active{background:var(--card);color:var(--txt);box-shadow:var(--shadow-sm)}
+  body.modo-negocio .mode-seg-btn.active{color:var(--blue)}
+  body.modo-consumidor .mode-seg-btn.active{color:var(--green-d)}
   /* enfasis por modo: ocultar lo demasiado tecnico al consumidor */
   body.modo-consumidor .solo-negocio{display:none !important}
   body.modo-negocio .solo-consumidor{display:none !important}
@@ -232,7 +306,7 @@
   body.ejecutivo #view-anal{display:block !important}
   body.ejecutivo .kpi{cursor:default}
   /* ===== Chat IA ===== */
-  .chat-fab{position:fixed;left:18px;bottom:18px;background:var(--green);color:#fff;border:none;border-radius:999px;padding:13px 18px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(21,163,74,.4);z-index:45}
+  .chat-fab{position:fixed;left:18px;bottom:18px;background:var(--green);color:#fff;border:none;border-radius:999px;padding:12px 18px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-lg);z-index:45;display:inline-flex;align-items:center;gap:8px}
   .chat-panel{position:fixed;left:18px;bottom:18px;width:370px;max-width:calc(100vw - 36px);height:540px;max-height:calc(100vh - 36px);background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.35);display:none;flex-direction:column;z-index:55;overflow:hidden}
   .chat-panel.open{display:flex;animation:sheetin .25s cubic-bezier(.22,1,.36,1)}
   .chat-head{background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;padding:12px 14px;font-weight:800;font-size:14px;display:flex;justify-content:space-between;align-items:center}
@@ -255,8 +329,6 @@
   .msg.load{opacity:.75;animation:pulse 1.3s infinite}
   .chat-body .cprice{color:var(--green-d);font-weight:800}
   .chat-body .cstore{background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:0 5px;font-weight:700;font-size:.92em;white-space:nowrap}
-  @keyframes fabpulse{0%,100%{box-shadow:0 6px 20px rgba(21,163,74,.4)}50%{box-shadow:0 8px 28px rgba(21,163,74,.65)}}
-  .chat-fab{animation:fabpulse 2.8s ease-in-out infinite}
   /* ===== Onboarding (pantalla de inicio) ===== */
   .onb{position:fixed;inset:0;background:var(--bg);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
   .onb.open{display:flex}
@@ -334,13 +406,64 @@
   .cfg-btn{background:none;border:1px solid var(--line);color:var(--mut);width:100%;padding:11px;border-radius:11px;font-weight:700;cursor:pointer;font-size:13px;transition:.14s}
   .cfg-btn:hover{border-color:var(--green);color:var(--green-d)}
   /* Catalogo retail: orden por columnas + agrupado + filas legibles */
-  #view-deals th[data-sort]{cursor:pointer;user-select:none;white-space:nowrap}
-  #view-deals th[data-sort]:hover{color:var(--green-d)}
-  #view-deals th.sorton{color:var(--green-d)}
+  #view-deals th[data-sort]{white-space:nowrap}
+  #view-deals th .thlabel{cursor:pointer;user-select:none}
+  #view-deals th .thlabel:hover{color:var(--green-d)}
+  #view-deals th.sorton .thlabel{color:var(--green-d)}
   #view-deals .sortind{font-size:9px}
   #view-deals tbody td{padding-top:11px;padding-bottom:11px}
   .grouprow td{background:var(--card2);font-weight:800;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;padding:6px 12px !important}
   .grouprow .gcount{display:inline-block;min-width:18px;text-align:center;background:var(--green);color:#fff;border-radius:999px;padding:0 6px;font-size:10px;margin-left:5px}
+  /* filtros de columna estilo Excel/PBI (Catálogo retail) */
+  #view-deals th{position:relative}
+  .colfilter-wrap{display:inline-block;margin-left:4px;position:relative}
+  .colfilter-btn{border:1px solid transparent;background:transparent;color:var(--mut2);border-radius:5px;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;vertical-align:middle}
+  .colfilter-btn svg{width:11px;height:11px}
+  .colfilter-btn:hover{background:var(--card2);color:var(--txt)}
+  .colfilter-btn.active{color:var(--green-d);background:var(--green-l)}
+  .colfilter-menu{display:none;position:absolute;left:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-lg);padding:8px;width:200px;z-index:30;text-transform:none;font-weight:500;letter-spacing:normal;overflow:hidden}
+  .colfilter-menu.open{display:block}
+  .colfilter-actions{display:flex;align-items:center;gap:8px;padding-bottom:6px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+  .colfilter-actions button{appearance:none;background:none;border:none;color:var(--mut);padding:0;font-size:11px;font-weight:600;cursor:pointer}
+  .colfilter-actions button:hover{color:var(--green-d);text-decoration:underline}
+  .colfilter-list{max-height:220px;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
+  .colfilter-item{display:flex;align-items:center;gap:7px;padding:4px 2px;border-radius:5px;font-size:12.5px;font-weight:500;color:var(--txt);cursor:pointer}
+  .colfilter-item:hover{background:var(--card2)}
+  .colfilter-item > span:last-child{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block}
+  .colfilter-item input{flex:none;margin:0;width:13px;min-width:13px;height:13px;accent-color:var(--green);cursor:pointer}
+  .colfilter-item .pinit{flex:none;width:9px;height:9px;font-size:0}
+
+  /* ===== Compactación móvil: solo re-escala tamaños/paddings, no cambia layout de PC (>560px intacto) ===== */
+  @media(max-width:560px){
+    body{padding:8px}
+    header{padding:9px 11px;gap:6px;border-radius:13px}
+    h1{font-size:15px}
+    h1 .tag{font-size:11px;padding:0 5px;border-radius:5px}
+    .sub{font-size:8.5px;margin-top:2px}
+    .sysbar{gap:5px}
+    .sys{min-width:0;padding:4px 8px;border-radius:8px}
+    .sys .sl{font-size:7px}
+    .sys .sv{font-size:10px}
+    .dot{width:6px;height:6px}
+    .kpis{gap:6px;margin-bottom:10px}
+    .kpi{padding:8px 9px;border-radius:10px}
+    .kpi .n{font-size:18px}
+    .kpi .l{font-size:8.5px;margin-top:2px}
+    .kpi .s{font-size:8px;padding:1px 5px;margin-top:4px}
+    .filtros{gap:6px;margin-bottom:9px}
+    .catwrap{margin-bottom:9px}
+    .cat{padding:6px 10px;font-size:11px;border-radius:8px}
+    input,select{padding:6px 9px;font-size:11.5px;border-radius:8px}
+    input{min-width:0}
+    .tabs{flex-wrap:wrap;gap:6px;margin-bottom:9px}
+    .tab{padding:6px 10px;font-size:11px;border-radius:8px}
+    .acciones{margin-left:0;width:100%;gap:5px}
+    .btn-exp,.btn-upd{padding:6px 9px;font-size:11px;border-radius:8px}
+    .iconact{width:30px;height:30px;font-size:13px}
+    th,td{padding:8px 9px;font-size:11.5px}
+    th{font-size:9px}
+    td.name,th.name{min-width:150px}
+  }
 </style>
 </head>
 <body>
@@ -387,26 +510,40 @@
   </div>
 
   <header>
-    <div>
-      <h1>🛒 DealBot <span class="tag" id="pais-tag">PA</span></h1>
+    <div class="hd-left">
+      <h1>
+        <svg class="logomark" width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12.5 2H19a3 3 0 0 1 3 3v6.5a3 3 0 0 1-.88 2.12l-8 8a3 3 0 0 1-4.24 0l-6.5-6.5a3 3 0 0 1 0-4.24l8-8A3 3 0 0 1 12.5 2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+          <circle cx="16.5" cy="7.5" r="1.6" fill="currentColor"/>
+          <path d="M6 14.5l2.6-3 2.1 2 4-4.7" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        DealBot <span class="tag tag-switch" id="pais-tag" onclick="cambiarPais()" title="Cambiar de país" role="button">PA</span>
+      </h1>
       <div class="sub" id="sub">Retail Price Intelligence Platform · Panamá</div>
     </div>
-    <div class="sysbar">
-      <div class="sys on"><span class="dot"></span><div><div class="sl">Estado</div><div class="sv">Online</div></div></div>
-      <div class="sys"><span class="sl">Última actualización</span><span class="sv" id="sys-last">—</span></div>
-      <div class="sys"><span class="sl">Próxima</span><span class="sv" id="sys-next">—</span></div>
-      <button class="modobadge" id="modo-badge" onclick="toggleModo()" title="Cambiar entre modo consumidor y modo negocio">🛒 Modo consumidor</button>
-      <button class="icontop" onclick="abrirConfig()" title="Configuración (modo, categoría, marca, tema)">⚙️</button>
-      <button class="icontop" id="btn-exec" onclick="toggleEjecutivo()" title="Vista ejecutiva (resumen en 1 minuto)">📊</button>
-      <button class="icontop" id="btn-dark" onclick="toggleDark()" title="Cambiar tema claro/oscuro">🌙</button>
+    <div class="hd-status" title="Estado del monitoreo automático">
+      <div class="st-item"><span class="st-l">Estado</span><span class="st-v"><span class="dot"></span>Online</span></div>
+      <div class="stdiv"></div>
+      <div class="st-item"><span class="st-l">Última actualización</span><span class="st-v" id="sys-last">—</span></div>
+      <div class="stdiv"></div>
+      <div class="st-item"><span class="st-l">Próxima</span><span class="st-v" id="sys-next">—</span></div>
+    </div>
+    <div class="hd-actions">
+      <div class="mode-seg" role="group" aria-label="Vista: negocio o consumidor">
+        <button class="mode-seg-btn" id="modo-btn-consumidor" onclick="aplicarModo('consumidor',true)" title="Vista consumidor" aria-label="Vista consumidor"><i data-lucide="shopping-cart"></i><span>Consumidor</span></button>
+        <button class="mode-seg-btn" id="modo-btn-negocio" onclick="aplicarModo('negocio',true)" title="Vista negocio" aria-label="Vista negocio"><i data-lucide="bar-chart-3"></i><span>Negocio</span></button>
+      </div>
+      <button class="icontop" onclick="abrirConfig()" title="Configuración" aria-label="Configuración"><i data-lucide="settings"></i></button>
+      <button class="icontop" id="btn-exec" onclick="toggleEjecutivo()" title="Vista ejecutiva (resumen en 1 minuto)" aria-label="Vista ejecutiva"><i data-lucide="presentation"></i></button>
+      <button class="icontop" id="btn-dark" onclick="toggleDark()" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema"><i data-lucide="moon"></i></button>
     </div>
   </header>
 
   <div class="kpis">
-    <div class="kpi" onclick="setView('deals')" title="Productos rastreados en esta categoría. Clic para ver el catálogo completo."><div class="n" id="k-prod">–</div><div class="l">Productos monitoreados</div><div class="s" id="k-prod-s"></div></div>
-    <div class="kpi" onclick="setView('comp')" title="Productos comparables en 2+ tiendas por código de barras. Clic para ver el comparador."><div class="n" id="k-match">–</div><div class="l">Comparables</div><div class="s" id="k-match-s"></div></div>
-    <div class="kpi deal" onclick="setView('anal')" title="Productos con diferencia de precio o descuento. Clic para ver Insights."><div class="n" id="k-deals">–</div><div class="l">Oportunidades activas</div><div class="s" id="k-deals-s"></div></div>
-    <div class="kpi" onclick="setView('comp')" title="Mayor diferencia de precio entre tiendas. Clic para ver el comparador (ordenado por ahorro)."><div class="n" id="k-save">–</div><div class="l">Máximo ahorro</div><div class="s" id="k-save-s"></div></div>
+    <div class="kpi" onclick="setView('deals')" title="Productos rastreados en esta categoría. Clic para ver el catálogo completo."><div class="n"><i data-lucide="package"></i><span id="k-prod">–</span></div><div class="l">Productos monitoreados</div><div class="s" id="k-prod-s"></div></div>
+    <div class="kpi" onclick="setView('comp')" title="Productos comparables en 2+ tiendas por código de barras. Clic para ver el comparador."><div class="n"><i data-lucide="layers"></i><span id="k-match">–</span></div><div class="l">Comparables</div><div class="s" id="k-match-s"></div></div>
+    <div class="kpi deal" onclick="setView('anal')" title="Productos con diferencia de precio o descuento. Clic para ver Insights."><div class="n"><i data-lucide="badge-percent"></i><span id="k-deals">–</span></div><div class="l">Oportunidades activas</div><div class="s" id="k-deals-s"></div></div>
+    <div class="kpi" onclick="setView('comp')" title="Mayor diferencia de precio entre tiendas. Clic para ver el comparador (ordenado por ahorro)."><div class="n"><i data-lucide="percent"></i><span id="k-save">–</span></div><div class="l">Máximo ahorro</div><div class="s" id="k-save-s"></div></div>
   </div>
 
   <div class="catwrap">
@@ -418,30 +555,36 @@
   <div id="panel-marca" class="pmarca" style="display:none"></div>
 
   <div class="filtros">
-    <input id="q" list="sug" autocomplete="off" placeholder="🔎 Buscar por nombre, marca o SKU…" oninput="render()" />
+    <div class="searchbox">
+      <i data-lucide="search"></i>
+      <input id="q" list="sug" autocomplete="off" placeholder="Buscar por nombre, marca o SKU…" oninput="render()" />
+    </div>
     <datalist id="sug"></datalist>
     <select id="f-marca" onchange="renderFade()"><option value="">Todas las marcas</option></select>
     <select id="f-ref" onchange="renderFade()" style="display:none">
       <option value="">Toda referencia</option>
     </select>
-    <button class="btn-exp" id="btn-favs" onclick="toggleSoloFavs()" title="Ver solo favoritos">⭐ Favoritos</button>
-    <button class="btn-exp" id="btn-dens" onclick="toggleDensidad()" title="Alternar densidad de la tabla">↕ Compacto</button>
-    <div class="expgroup">
-      <button class="btn-exp" onclick="compartir()">🔗 Compartir</button>
-      <button class="btn-exp" onclick="exportExcel()">📥 Excel</button>
-      <button class="btn-exp" onclick="exportPDF()">📄 PDF</button>
+    <button class="btn-exp" id="btn-favs" onclick="toggleSoloFavs()" title="Ver solo favoritos"><i data-lucide="star"></i><span>Favoritos</span></button>
+    <button class="btn-exp" id="btn-dens" onclick="toggleDensidad()" title="Alternar densidad de la tabla"><i data-lucide="rows-3"></i><span>Compacto</span></button>
+    <div class="expmenu">
+      <button class="btn-exp" onclick="toggleExportMenu(event)" id="btn-export"><i data-lucide="download"></i><span>Exportar</span><i data-lucide="chevron-down"></i></button>
+      <div class="expmenu-list" id="export-menu">
+        <button onclick="closeExportMenu();compartir()"><i data-lucide="share-2"></i>Compartir enlace</button>
+        <button onclick="closeExportMenu();exportExcel()"><i data-lucide="file-spreadsheet"></i>Exportar Excel</button>
+        <button onclick="closeExportMenu();exportPDF()"><i data-lucide="file-text"></i>Exportar PDF</button>
+      </div>
     </div>
   </div>
 
   <div class="tabs">
-    <div class="tab active" data-v="comp" onclick="setView('comp')">🏪 Monitor de Precios</div>
-    <div class="tab" data-v="deals" onclick="setView('deals')">📋 Catálogo retail</div>
-    <div class="tab solo-negocio" data-v="may" onclick="setView('may')">🏭 Mayoristas</div>
-    <div class="tab" data-v="anal" onclick="setView('anal')">📊 Insights</div>
+    <div class="tab active" data-v="comp" onclick="setView('comp')"><i data-lucide="store"></i>Monitor de Precios</div>
+    <div class="tab" data-v="deals" onclick="setView('deals')"><i data-lucide="clipboard-list"></i>Catálogo retail</div>
+    <div class="tab solo-negocio" data-v="may" onclick="setView('may')"><i data-lucide="factory"></i>Mayoristas</div>
+    <div class="tab" data-v="anal" onclick="setView('anal')"><i data-lucide="chart-no-axes-combined"></i>Insights</div>
     <div class="acciones">
-      <button class="btn-upd" id="btn-upd" onclick="actualizar()">▶ Ejecutar monitoreo</button>
-      <button class="btn-exp" onclick="abrirSim()">🧮 Simulador</button>
-      <button class="btn-exp" onclick="abrirMarcas()">⚖️ Marcas</button>
+      <button class="btn-upd" id="btn-upd" onclick="actualizar()"><i data-lucide="play"></i>Iniciar monitoreo</button>
+      <button class="btn-sec" onclick="abrirSim()"><i data-lucide="calculator"></i>Simulador</button>
+      <button class="btn-sec" onclick="abrirMarcas()"><i data-lucide="scale"></i>Marcas</button>
     </div>
   </div>
 
@@ -451,13 +594,13 @@
       <table>
         <thead><tr>
           <th class="name">Producto</th><th>Marca</th>
-          <th>Precios por tienda · más barato primero</th>
+          <th>Precios por tienda <span style="text-transform:none;font-weight:400;opacity:.75">· mejor precio primero</span></th>
           <th class="r">Ahorro</th>
         </tr></thead>
         <tbody id="comp-rows"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
       </table>
     </div>
-    <div class="nota">🏪 Comparación entre <b>tiendas retail</b> (precio por unidad). Los <b>mayoristas</b> (packs) están en su propia pestaña 🏭.</div>
+    <div class="nota">Comparación entre <b>tiendas retail</b> (precio por unidad). Los <b>mayoristas</b> (packs) están en su propia pestaña.</div>
   </div>
 
   <div class="view" id="view-deals">
@@ -465,8 +608,8 @@
       <table>
         <thead><tr>
           <th class="name" data-sort="nombre" onclick="sortDeals('nombre')">Producto<span class="sortind"></span></th>
-          <th data-sort="marca" onclick="sortDeals('marca')">Marca<span class="sortind"></span></th>
-          <th>Tienda</th>
+          <th data-sort="marca"><span class="thlabel" onclick="sortDeals('marca')">Marca<span class="sortind"></span></span><span class="colfilter-wrap"><button class="colfilter-btn" onclick="toggleColFilter(event,'marca')" title="Filtrar por marca" aria-label="Filtrar por marca"><i data-lucide="chevron-down"></i></button><div class="colfilter-menu" id="colfilter-marca"></div></span></th>
+          <th><span class="thlabel">Tienda</span><span class="colfilter-wrap"><button class="colfilter-btn" onclick="toggleColFilter(event,'retailer')" title="Filtrar por tienda" aria-label="Filtrar por tienda"><i data-lucide="chevron-down"></i></button><div class="colfilter-menu" id="colfilter-retailer"></div></span></th>
           <th class="r" data-sort="price" onclick="sortDeals('price')">Precio<span class="sortind"></span></th>
           <th class="r">Lista</th>
           <th class="r" data-sort="desc" onclick="sortDeals('desc')">Desc.<span class="sortind"></span></th>
@@ -485,22 +628,22 @@
         <tbody id="may-rows"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
       </table>
     </div>
-    <div class="nota">🏭 Precios <b>mayoristas</b> (packs de 4u/12u, etc.). No se comparan con retail porque la unidad de venta es distinta.</div>
+    <div class="nota">Precios <b>mayoristas</b> (packs de 4u/12u, etc.). No se comparan con retail porque la unidad de venta es distinta.</div>
   </div>
 
   <div class="view" id="view-anal">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn-exp" onclick="reportePDF()">📑 Descargar reporte ejecutivo (PDF)</button></div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn-exp" onclick="reportePDF()"><i data-lucide="file-text"></i><span>Descargar reporte ejecutivo (PDF)</span></button></div>
     <div class="ai-summary" id="ai-summary"></div>
     <div class="insight-cards" id="insight-cards"></div>
     <div class="ptienda" id="ptienda"></div>
     <div class="analwrap">
       <div class="panel">
-        <h3>🏆 Ranking de tiendas</h3>
+        <h3><i data-lucide="trophy"></i>Ranking de tiendas</h3>
         <div class="ph" id="rank-ph">Qué tan barata es cada tienda en esta categoría (1.00 = siempre la más barata)</div>
         <div id="rank-list"></div>
       </div>
       <div class="panel">
-        <h3>📈 Evolución de precio</h3>
+        <h3><i data-lucide="trending-up"></i>Evolución de precio</h3>
         <div class="ph">Índice de toda la categoría, o elegí un producto para ver su historia por tienda</div>
         <select id="infl-sel" onchange="graficoIndice(this.value)" style="width:100%;margin-bottom:10px"></select>
         <div id="infl-box"><canvas id="chart-infl" height="170"></canvas></div>
@@ -508,35 +651,35 @@
     </div>
     <div class="analwrap" style="margin-top:14px">
       <div class="panel">
-        <h3>💡 Mejores oportunidades del día</h3>
+        <h3><i data-lucide="lightbulb"></i>Mejores oportunidades del día</h3>
         <div class="ph">Mayor diferencia de precio para el mismo producto entre tiendas</div>
         <div id="oportunidades"></div>
       </div>
       <div class="panel">
-        <h3>🔔 Alertas</h3>
+        <h3><i data-lucide="bell"></i>Alertas</h3>
         <div class="ph">Productos con descuento detectado respecto a su precio de lista</div>
         <div id="alertas"></div>
       </div>
     </div>
     <div class="analwrap" style="margin-top:14px">
       <div class="panel">
-        <h3>📉 Bajaron de precio</h3>
-        <div class="ph">Movimientos desde que registramos (gana precisión conforme se acumula histórico)</div>
+        <h3><i data-lucide="trending-down"></i>Bajaron de precio</h3>
+        <div class="ph" id="mov-ph-baja">Últimos 7 días</div>
         <div id="mov-baja"></div>
       </div>
       <div class="panel">
-        <h3>📈 Subieron de precio</h3>
-        <div class="ph">Aumentos recientes — útil para vigilar a la competencia</div>
+        <h3><i data-lucide="trending-up"></i>Subieron de precio</h3>
+        <div class="ph" id="mov-ph-sube">Últimos 7 días — útil para vigilar a la competencia</div>
         <div id="mov-sube"></div>
       </div>
     </div>
   </div>
 
-  <button class="canasta-fab" id="canasta-fab" onclick="abrirCanasta()" style="display:none">🧺 Canasta (<span id="canasta-n">0</span>)</button>
+  <button class="canasta-fab" id="canasta-fab" onclick="abrirCanasta()" style="display:none"><i data-lucide="shopping-basket"></i>Canasta (<span id="canasta-n">0</span>)</button>
 
-  <button class="chat-fab" id="chat-fab" onclick="chatToggle()">💬 Pregúntale a DealBot</button>
+  <button class="chat-fab" id="chat-fab" onclick="chatToggle()"><i data-lucide="message-circle"></i>Pregúntale a DealBot</button>
   <div class="chat-panel" id="chat-panel">
-    <div class="chat-head">🤖 Asistente DealBot <button class="x" onclick="chatToggle()">✕</button></div>
+    <div class="chat-head"><span style="display:flex;align-items:center;gap:7px"><i data-lucide="bot"></i>Asistente DealBot</span> <button class="x" onclick="chatToggle()">✕</button></div>
     <div class="chat-body" id="chat-body"></div>
     <div class="chat-sug" id="chat-sug"></div>
     <div class="chat-foot">
@@ -548,7 +691,7 @@
   <div class="overlay" id="ov-canasta">
     <div class="sheet">
       <button class="x" onclick="cerrar('ov-canasta')">✕</button>
-      <h2>🧺 Mi canasta</h2>
+      <h2 style="display:flex;align-items:center;gap:8px"><i data-lucide="shopping-basket"></i>Mi canasta</h2>
       <div class="ph" style="font-size:11px;color:var(--mut);margin-bottom:8px">Dónde sale más barato comprar todo junto (entre tiendas retail)</div>
       <div id="canasta-items"></div>
       <div class="cstore" id="canasta-totales"></div>
@@ -683,13 +826,19 @@
       extras: {},
     },
   };
-  const PAIS = location.hostname.includes('colombia') || new URLSearchParams(location.search).get('pais')==='CO' ? 'CO' : 'PA';
+  const PAIS_QP = new URLSearchParams(location.search).get('pais');
+  const PAIS = PAIS_QP==='PA' ? 'PA' : PAIS_QP==='CO' ? 'CO' : (location.hostname.includes('colombia') ? 'CO' : 'PA');
+  function cambiarPais(){
+    const u = new URL(location.href);
+    u.searchParams.set('pais', PAIS==='CO' ? 'PA' : 'CO');
+    location.href = u.toString();
+  }
   const CFG = PAISES[PAIS];
   const tiendaNombre = Object.fromEntries([...CFG.tiendas.map(t=>[t[0],t[3]]), ...Object.entries(CFG.extras).map(([s,e])=>[s,e[0]])]);
   const chipClass = r => (Object.fromEntries([...CFG.tiendas.map(t=>[t[0],t[5]]), ...Object.entries(CFG.extras).map(([s,e])=>[s,e[1]])]))[r] || CFG.tiendas[0][5];
   const slugDe = n => (Object.fromEntries([...CFG.tiendas.map(t=>[t[3],t[0]]), ...Object.entries(CFG.extras).map(([s,e])=>[e[0],s])]))[n] || CFG.tiendas[0][0];
-  const CAT_ICON = { atun:'🥫', vegetales_enlatados:'🥬', sardinas:'🐟', cafe:'☕', arroz:'🍚', duraznos:'🍑', ensaladas:'🥗', comida_mascotas:'🐱', avena:'🥣', harina:'🌾', pasta_tomate:'🍅', aceite_cocina:'🫒', pasta:'🍝', leche:'🥛' };
-  const iconCat = slug => CAT_ICON[slug] || '🏷️';
+  const CAT_ICON = { atun:'fish', vegetales_enlatados:'carrot', sardinas:'anchor', cafe:'coffee', arroz:'wheat', duraznos:'cherry', ensaladas:'salad', comida_mascotas:'paw-print', avena:'wheat', harina:'croissant', pasta_tomate:'droplet', aceite_cocina:'flame', pasta:'utensils', leche:'milk', bebidas:'cup-soda', chocolates_galletas:'cookie', cuidado_personal:'sparkles' };
+  const iconCat = slug => `<i data-lucide="${CAT_ICON[slug] || 'tag'}"></i>`;
 
   let CATS = [], catActual = null, compData = [], dealsData = [], TIPO = {}, vistaActual = 'comp';
   let rankData = [], inflData = [], movData = [], canasta = new Map(), chartInfl = null, chartHist = null;
@@ -730,7 +879,7 @@
     animCount('k-prod', total, v=>String(Math.round(v)));
     animCount('k-match', comp, v=>String(Math.round(v)));
     animCount('k-deals', deals, v=>String(Math.round(v)));
-    animCount('k-save', maxSave, v=> maxSave>0?'−'+v.toFixed(1)+'%':'—');
+    animCount('k-save', maxSave, v=> maxSave>0?v.toFixed(1)+'%':'—');
     fxEntrada('.kpi');
   }
   function renderFade(){ render(); fxFade(document.getElementById('view-'+vistaActual)); }
@@ -777,7 +926,7 @@
     const cards = [
       { ic:'🥇', iv: masBarato?tn(masBarato.retailer):'—', il:'Más barato', ix: masBarato?`gana ${masBarato.veces_mas_barata}/${masBarato.productos}`:'' },
       { ic:'💸', iv: masCaro&&masCaro!==masBarato?tn(masCaro.retailer):'—', il:'Más caro', ix: masCaro?`+${((Number(masCaro.indice_precio)-1)*100).toFixed(0)}% vs mín`:'' },
-      { ic:'🔥', iv: best?`−${Number(best.ahorro_pct).toFixed(0)}%`:'—', il:'Mejor oportunidad', ix: best?money(best.ahorro_abs)+' de diferencia':'', click: best?`verHistorico('${best.ean}')`:'' },
+      { ic:'🔥', iv: best?`${Number(best.ahorro_pct).toFixed(0)}% menos`:'—', il:'Mejor oportunidad', ix: best?money(best.ahorro_abs)+' de diferencia':'', click: best?`verHistorico('${best.ean}')`:'' },
       { ic:'📊', iv: avg>0?money(avg):'—', il:'Ahorro promedio', ix: `${conAhorro.length} productos comparables` }
     ];
     document.getElementById('insight-cards').innerHTML = cards.map(c=>
@@ -794,7 +943,7 @@
     document.getElementById('oportunidades').innerHTML = ops.length ? ops.map(d=>
       `<div class="oprow" onclick="verHistorico('${d.ean}')" title="Ver histórico de precio"><span class="nm">${d.nombre}</span>
         <span class="chip ${chipClass(slugDe(d.tienda_mas_barata))}" style="margin:0 6px">${d.tienda_mas_barata}</span>
-        <span class="savechip">−${Number(d.ahorro_pct).toFixed(0)}% · ${money(d.ahorro_abs)}</span></div>`).join('')
+        <span class="savechip">${Number(d.ahorro_pct).toFixed(0)}% menos · ${money(d.ahorro_abs)}</span></div>`).join('')
       : '<div class="empty">Sin oportunidades comparables aún.</div>';
 
     // alertas: deals con descuento
@@ -816,6 +965,14 @@
     const sube = movData.filter(m=>Number(m.cambio_pct)>0).sort((a,b)=>Number(b.cambio_pct)-Number(a.cambio_pct)).slice(0,7);
     document.getElementById('mov-baja').innerHTML = baja.length ? baja.map(m=>mrow(m,false)).join('') : '<div class="empty">Sin bajas registradas aún — aparecerán al acumular más días.</div>';
     document.getElementById('mov-sube').innerHTML = sube.length ? sube.map(m=>mrow(m,true)).join('') : '<div class="empty">Sin subas registradas aún.</div>';
+    // aviso si todavía no hay 7 días completos de historial (el fallback compara desde el primer registro)
+    if(movData.length){
+      const masViejo = movData.reduce((min,m)=> m.primer_registro && (!min || m.primer_registro<min) ? m.primer_registro : min, null);
+      const diasHist = masViejo ? Math.floor((Date.now()-new Date(masViejo).getTime())/86400000) : null;
+      const nota = diasHist!=null && diasHist<7 ? ` <span style="color:var(--amber)">· con ${diasHist} día${diasHist===1?'':'s'} de historial (se compara desde el inicio del rastreo)</span>` : '';
+      document.getElementById('mov-ph-baja').innerHTML = 'Últimos 7 días' + nota;
+      document.getElementById('mov-ph-sube').innerHTML = 'Últimos 7 días — útil para vigilar a la competencia' + nota;
+    }
 
     fxEntrada('#insight-cards .insight');
     fxEntrada('#oportunidades .oprow', 6);
@@ -950,7 +1107,7 @@
     const tot = tiendas.map(([ret,campo])=>{
       let suma=0, n=0;
       items.forEach(d=>{ const p=d[campo]; if(p!=null){ suma+=Number(p); n++; } });
-      return { ret, suma, n };
+      return { ret, campo, suma, n };
     }).filter(t=>t.n>0).sort((a,b)=>a.suma-b.suma);
     const completos = tot.filter(t=>t.n===items.length);
     const minComp = completos.length ? Math.min(...completos.map(t=>t.suma)) : null;
@@ -963,10 +1120,18 @@
         <span style="font-size:17px">${tiendaNombre[ganador.ret]||ganador.ret} · $${ganador.suma.toFixed(2)}</span>
         ${ahorro>0?`<span style="font-size:12px;font-weight:700">Ahorrás $${ahorro.toFixed(2)} vs la opción más cara</span>`:''}
       </div>` : '';
-    document.getElementById('canasta-totales').innerHTML = items.length ? resumen + tot.map(t=>
-      `<div class="row2 ${t.suma===minComp&&t.n===items.length?'win':''}">
-         <span>${tiendaNombre[t.ret]||t.ret} ${t.n<items.length?`<span style="color:var(--mut);font-weight:500">(${t.n}/${items.length})</span>`:''}</span>
-         <span>$${t.suma.toFixed(2)}</span></div>`).join("") : '';
+    document.getElementById('canasta-totales').innerHTML = items.length ? resumen + tot.map(t=>{
+      const gana = t.suma===minComp&&t.n===items.length;
+      const cabecera = `<span>${tiendaNombre[t.ret]||t.ret} ${t.n<items.length?`<span style="color:var(--mut);font-weight:500">(${t.n}/${items.length})</span>`:''}</span>
+         <span>$${t.suma.toFixed(2)}</span>`;
+      if(t.n>=items.length) return `<div class="row2 ${gana?'win':''}">${cabecera}</div>`;
+      // desglose: que productos de la canasta tiene esta tienda y cuales le faltan
+      const detalle = items.map(d=>{
+        const p = d[t.campo]; const tiene = p!=null;
+        return `<div class="cbk-item${tiene?'':' miss'}"><span>${tiene?'✅':'❌'} ${d.nombre}</span>${tiene?`<b>${money(p)}</b>`:'<span>Sin dato</span>'}</div>`;
+      }).join('');
+      return `<details class="cbk ${gana?'win':''}"><summary>${cabecera}</summary><div class="cbk-detail">${detalle}</div></details>`;
+    }).join("") : '';
   }
 
   // ===== Simulador de presupuesto (P5) — multi-categoría =====
@@ -985,6 +1150,7 @@
   function pintarSimCats(){
     document.getElementById('sim-cats').innerHTML = CATS.map(c=>
       `<span class="simchip ${simCats.has(c.slug)?'on':''}" onclick="toggleSimCat('${c.slug}')">${iconCat(c.slug)} ${c.nombre}</span>`).join('');
+    if(window.lucide) lucide.createIcons();
   }
   function toggleSimCat(slug){
     if(simCats.has(slug)){ if(simCats.size>1) simCats.delete(slug); }  // no permitir dejar 0
@@ -1069,6 +1235,12 @@
     document.getElementById('btn-favs').classList.toggle('on', soloFavs);
     renderFade();
   }
+  function toggleExportMenu(ev){
+    ev.stopPropagation();
+    document.getElementById('export-menu').classList.toggle('open');
+  }
+  function closeExportMenu(){ document.getElementById('export-menu')?.classList.remove('open'); }
+  document.addEventListener('click', (ev)=>{ if(!ev.target.closest('.expmenu')) closeExportMenu(); });
   function compartir(){
     const u = new URL(location.href);
     u.searchParams.set('cat', catActual ? catActual.slug : '');
@@ -1079,14 +1251,15 @@
     if(navigator.clipboard){ navigator.clipboard.writeText(link).then(done).catch(()=>prompt('Copiá el enlace:', link)); }
     else prompt('Copiá el enlace:', link);
   }
+  function setIcon(el, name){ if(!el) return; el.innerHTML = `<i data-lucide="${name}"></i>`; if(window.lucide) lucide.createIcons(); }
   function toggleDark(){
     const on = document.body.classList.toggle('dark');
     localStorage.setItem('db_dark', on?'1':'0');
-    document.getElementById('btn-dark').textContent = on ? '☀️' : '🌙';
+    setIcon(document.getElementById('btn-dark'), on ? 'sun' : 'moon');
     if(vistaActual==='anal'){ renderAnalisis(); renderInsights(); }
   }
   function initDark(){
-    if(localStorage.getItem('db_dark')==='1'){ document.body.classList.add('dark'); document.getElementById('btn-dark').textContent='☀️'; }
+    if(localStorage.getItem('db_dark')==='1'){ document.body.classList.add('dark'); setIcon(document.getElementById('btn-dark'), 'sun'); }
   }
   function toggleDensidad(){
     const on = document.body.classList.toggle('compact');
@@ -1100,7 +1273,7 @@
   function toggleEjecutivo(){
     const on = document.body.classList.toggle('ejecutivo');
     const b = document.getElementById('btn-exec');
-    b.textContent = on?'📋':'📊';
+    setIcon(b, on?'clipboard-list':'presentation');
     b.title = on?'Volver a vista operativa':'Vista ejecutiva (resumen en 1 minuto)';
     if(on){ setView('anal'); window.scrollTo({top:0,behavior:'smooth'}); }
   }
@@ -1149,18 +1322,18 @@
   const SCAN_URL = CFG.scanUrl;
   async function actualizar(){
     const b = document.getElementById('btn-upd');
-    const orig = '▶ Ejecutar monitoreo';
-    b.disabled = true; b.textContent = '⏳ Ejecutando monitoreo… (~15s)';
+    const orig = '<i data-lucide="play"></i>Iniciar monitoreo';
+    b.disabled = true; b.innerHTML = '<i data-lucide="loader-2" class="spin"></i>Monitoreando… (~15s)'; if(window.lucide) lucide.createIcons();
     try{
       const r = await fetch(SCAN_URL, { method:'POST' });
       const j = await r.json();
       if(!j.ok) throw new Error(j.error||'error');
       if(catActual) await selCat(catActual.slug);   // recarga datos en pantalla
-      b.textContent = '✅ '+j.scrapeados+' productos actualizados';
+      b.innerHTML = '<i data-lucide="check"></i>'+j.scrapeados+' productos actualizados'; if(window.lucide) lucide.createIcons();
     }catch(e){
-      b.textContent = '⚠️ Error, reintenta';
+      b.innerHTML = '<i data-lucide="triangle-alert"></i>Error, reintenta'; if(window.lucide) lucide.createIcons();
     }finally{
-      setTimeout(()=>{ b.textContent = orig; b.disabled = false; }, 3000);
+      setTimeout(()=>{ b.innerHTML = orig; if(window.lucide) lucide.createIcons(); b.disabled = false; }, 3000);
     }
   }
 
@@ -1215,6 +1388,7 @@
     document.getElementById("catbar").innerHTML = CATS.map(c=>
       `<div class="cat" data-c="${c.slug}" onclick="selCat('${c.slug}')"><span class="ci">${iconCat(c.slug)}</span>${c.nombre}</div>`).join("");
     catArrows();
+    if(window.lucide) lucide.createIcons();
   }
   function catScroll(dir){ const b=document.getElementById('catbar'); if(b) b.scrollBy({left:dir*220,behavior:'smooth'}); }
   // ===== Modo consumidor / negocio (la eleccion del onboarding cambia la experiencia) =====
@@ -1230,7 +1404,8 @@
     document.body.classList.toggle('modo-negocio', modoUsuario==='negocio');
     document.body.classList.toggle('modo-consumidor', modoUsuario==='consumidor');
     const t = MODO_TXT[modoUsuario];
-    const badge = document.getElementById('modo-badge'); if(badge) badge.textContent = t.badge;
+    document.getElementById('modo-btn-consumidor')?.classList.toggle('active', modoUsuario==='consumidor');
+    document.getElementById('modo-btn-negocio')?.classList.toggle('active', modoUsuario==='negocio');
     const sub = document.getElementById('sub'); if(sub) sub.textContent = t.sub;
     for(const id in t.kpis){ const el = document.getElementById(id)?.parentElement?.querySelector('.l'); if(el) el.textContent = t.kpis[id]; }
     // si un consumidor estaba viendo Mayoristas (B2B), volver al Monitor
@@ -1361,6 +1536,7 @@
     document.querySelectorAll('.catarr').forEach(a=>a.style.display = hay ? 'flex' : 'none');
   }
   async function init(){
+    if(window.lucide) lucide.createIcons();
     initDark(); initDensidad();
     // ajustes por país
     const ptag = document.getElementById('pais-tag'); if(ptag) ptag.textContent = CFG.tag;
@@ -1392,6 +1568,7 @@
   async function selCat(slug){
     catActual = CATS.find(c=>c.slug===slug);
     filtroGana = null;
+    dealsColFiltro = { marca: null, retailer: null };
     document.querySelectorAll('.cat').forEach(el=>el.classList.toggle('active', el.dataset.c===slug));
     const _act=document.querySelector('.cat.active'); if(_act&&_act.scrollIntoView) _act.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
     // skeleton loading mientras carga (#21)
@@ -1399,15 +1576,14 @@
     document.getElementById("f-ref").style.display = "none";  // se decide tras cargar datos (segun referencias reales)
     document.getElementById("q").value = ""; document.getElementById("f-marca").value=""; document.getElementById("f-ref").value="";
 
-    const [comp, deals, rank, infl, mov] = await Promise.all([
+    const [comp, deals, infl, mov] = await Promise.all([
       sb.from(CFG.v.comparador).select("*").eq("categoria",slug).order("ahorro_pct",{ascending:false}),
       sb.from(CFG.v.deals).select("*").eq("categoria",slug).order("es_deal",{ascending:false}).order("desc_retailer_pct",{ascending:false}),
-      sb.from(CFG.v.ranking).select("*").eq("categoria",slug),
       sb.from(CFG.v.inflacion).select("*").eq("categoria",slug).order("periodo"),
       sb.from(CFG.v.movimientos).select("*").eq("categoria",slug)
     ]);
     compData = comp.data || []; dealsData = deals.data || [];
-    rankData = rank.data || []; inflData = infl.data || []; movData = mov.data || [];
+    rankData = calcularRanking(compData.filter(esComparable)); inflData = infl.data || []; movData = mov.data || [];
 
     // poblar marcas
     const marcas = [...new Set(dealsData.map(d=>d.marca).filter(Boolean))].sort();
@@ -1487,8 +1663,28 @@
     return Math.max(...gs)/Math.min(...gs) > 1.4;   // >40% de diferencia de tamaño = no comparable
   }
   const esComparable = d => nRetailCount(d)>=2 && !tamanoDispar(d);
+  // Ranking por tienda calculado sobre el MISMO universo que "Comparables" (evita que Insights cuente
+  // pares de distinto tamaño que el comparador ya excluye — ver esComparable/tamanoDispar arriba)
+  function calcularRanking(compFiltrado){
+    const out = [];
+    for(const t of CFG.tiendas){
+      const [slug,pc,,nom] = t;
+      const filas = compFiltrado.filter(d=>Number(d[pc])>0);
+      const productos = filas.length;
+      if(productos < 3) continue;
+      const gana = filas.filter(d=>d.tienda_mas_barata===nom).length;
+      const indice = filas.reduce((s,d)=>s+Number(d[pc])/Number(d.precio_min_retail),0)/productos;
+      out.push({ retailer: slug, productos, veces_mas_barata: gana, pct_gana: Math.round(gana/productos*100), indice_precio: Math.round(indice*1000)/1000 });
+    }
+    return out.sort((a,b)=>a.indice_precio-b.indice_precio);
+  }
   // Precios como chips (solo las tiendas que tienen el producto, ordenadas de más barato a más caro)
   const TIENDAS_FULL = CFG.tiendas.map(t=>[t[0],t[1],t[2],t[3]]);
+  const RETAILER_LOGO = {
+    exito:'logos/exito.svg', carulla:'logos/carulla.svg', jumbo:'logos/jumbo.png', olimpica:'logos/olimpica.png',
+    superxtra:'logos/superxtra.png', superrey:'logos/rey.png', super99:'logos/super99.png', supercarnes:'logos/supercarnes.png',
+    superbaru:'logos/superbaru.png', machetazo:'logos/machetazo.png', ribasmith:'logos/ribasmith.png'
+  };
   function preciosChips(d){
     const best = d.tienda_mas_barata;
     const arr = TIENDAS_FULL.map(([slug,pc,lc,nom])=>({slug,nom,precio:Number(d[pc]),link:d[lc]}))
@@ -1496,7 +1692,9 @@
     if(!arr.length) return '<span class="zero">—</span>';
     return arr.map(t=>{
       const cls = 'pchip '+chipClass(t.slug)+(t.nom===best?' best':'');
-      const cont = `<span class="ps">${t.nom}</span> ${money(t.precio)}`;
+      const logo = RETAILER_LOGO[t.slug];
+      const badge = logo ? `<img class="plogo ${chipClass(t.slug)}" src="${logo}" alt="" loading="lazy">` : `<span class="pinit ${chipClass(t.slug)}">${t.nom.charAt(0)}</span>`;
+      const cont = `${badge}<span class="ps">${t.nom}</span> ${money(t.precio)}`;
       return t.link ? `<a class="${cls}" href="${t.link}" target="_blank">${cont}</a>` : `<span class="${cls}">${cont}</span>`;
     }).join('');
   }
@@ -1523,7 +1721,50 @@
     }).join(' ');
   }
   let dealsFiltrados = [];
+  let dealsBase = [];  // catalogo retail tras filtros globales, ANTES de filtros por columna (para poblar los menus)
   let dealsSort = { campo:'marca', dir:1 };
+  // filtros de columna estilo Excel/PBI (Catálogo retail): null = sin filtrar (todos), Set = solo esos valores
+  let dealsColFiltro = { marca: null, retailer: null };
+  function valorColumna(campo, d){ return campo==='retailer' ? d.retailer : (d.marca || '—'); }
+  function etiquetaValorColumna(campo, v){ return campo==='retailer' ? (tiendaNombre[v]||v) : v; }
+  function toggleColFilter(ev, campo){
+    ev.stopPropagation();
+    const menu = document.getElementById('colfilter-'+campo);
+    const abrir = !menu.classList.contains('open');
+    document.querySelectorAll('.colfilter-menu.open').forEach(m=>m.classList.remove('open'));
+    if(abrir){ pintarColFilterMenu(campo); menu.classList.add('open'); }
+  }
+  function pintarColFilterMenu(campo){
+    const menu = document.getElementById('colfilter-'+campo);
+    const valores = [...new Set(dealsBase.map(d=>valorColumna(campo,d)).filter(v=>v!=null))]
+      .sort((a,b)=>etiquetaValorColumna(campo,a).localeCompare(etiquetaValorColumna(campo,b)));
+    const activos = dealsColFiltro[campo];
+    menu.innerHTML = `
+      <div class="colfilter-actions">
+        <button type="button" onclick="colFiltroTodos('${campo}',true)">Todos</button>
+        <button type="button" onclick="colFiltroTodos('${campo}',false)">Ninguno</button>
+      </div>
+      <div class="colfilter-list">${valores.map(v=>{
+        const chk = campo==='retailer' ? `<span class="pinit ${chipClass(v)}"></span>` : '';
+        const marcado = activos===null || activos.has(v);
+        return `<label class="colfilter-item"><input type="checkbox" ${marcado?'checked':''} onchange="toggleColValor('${campo}','${String(v).replace(/'/g,"\\'")}')">${chk}<span>${etiquetaValorColumna(campo,v)}</span></label>`;
+      }).join('')}</div>`;
+  }
+  function toggleColValor(campo, valor){
+    if(dealsColFiltro[campo]===null) dealsColFiltro[campo] = new Set(dealsBase.map(d=>valorColumna(campo,d)));
+    const set = dealsColFiltro[campo];
+    if(set.has(valor)) set.delete(valor); else set.add(valor);
+    render();
+    pintarColFilterMenu(campo);
+    document.getElementById('colfilter-'+campo).classList.add('open');
+  }
+  function colFiltroTodos(campo, marcarTodos){
+    dealsColFiltro[campo] = marcarTodos ? null : new Set();
+    render();
+    pintarColFilterMenu(campo);
+    document.getElementById('colfilter-'+campo).classList.add('open');
+  }
+  document.addEventListener('click', (ev)=>{ if(!ev.target.closest('.colfilter-wrap')) document.querySelectorAll('.colfilter-menu.open').forEach(m=>m.classList.remove('open')); });
   const DEALS_SORTERS = {
     nombre: (a,b)=> nombreLimpio(a.nombre).localeCompare(nombreLimpio(b.nombre)),
     marca:  (a,b)=> (a.marca||'zzz').localeCompare(b.marca||'zzz') || nombreLimpio(a.nombre).localeCompare(nombreLimpio(b.nombre)),
@@ -1534,6 +1775,12 @@
     if(dealsSort.campo===campo) dealsSort.dir*=-1;
     else { dealsSort.campo=campo; dealsSort.dir = (campo==='desc')?-1:1; }
     pintarDeals();
+  }
+  function pintarColFilterEstado(){
+    ['marca','retailer'].forEach(campo=>{
+      const btn = document.getElementById('colfilter-'+campo)?.previousElementSibling;
+      if(btn) btn.classList.toggle('active', !!dealsColFiltro[campo]);
+    });
   }
   function pintarSortHeaders(){
     document.querySelectorAll('#view-deals th[data-sort]').forEach(th=>{
@@ -1576,6 +1823,10 @@
     const dealsAll = aplicaFiltros(dealsData);
     const deals = dealsAll.filter(d=>!esMayorista(d.retailer));   // catalogo retail
     const dealsMay = dealsAll.filter(d=>esMayorista(d.retailer)); // mayoristas
+    dealsBase = deals;   // universo para poblar los menus de filtro por columna (Catálogo retail)
+    let dealsTabla = deals;
+    if(dealsColFiltro.marca) dealsTabla = dealsTabla.filter(d=>dealsColFiltro.marca.has(valorColumna('marca',d)));
+    if(dealsColFiltro.retailer) dealsTabla = dealsTabla.filter(d=>dealsColFiltro.retailer.has(valorColumna('retailer',d)));
 
     document.getElementById("k-prod").textContent = dealsAll.length;
     document.getElementById("k-prod-s").textContent = (catActual?catActual.nombre:"") + " · " + (CFG.tiendas.length + Object.keys(CFG.extras).length) + " tiendas";
@@ -1586,7 +1837,7 @@
     document.getElementById("k-deals-s").textContent = ultimaTs ? "actualizado "+haceCuanto(ultimaTs) : "";
     const conAhorro = comp.filter(d=>Number(d.ahorro_pct)>0);
     const maxSave = conAhorro.reduce((m,d)=>Math.max(m, Number(d.ahorro_pct)||0),0);
-    document.getElementById("k-save").textContent = maxSave>0 ? "−"+maxSave.toFixed(1)+"%" : "—";
+    document.getElementById("k-save").textContent = maxSave>0 ? maxSave.toFixed(1)+"%" : "—";
     const avgAbs = conAhorro.length ? conAhorro.reduce((s,d)=>s+(Number(d.ahorro_abs)||0),0)/conAhorro.length : 0;
     document.getElementById("k-save-s").textContent = avgAbs>0 ? money(avgAbs)+" promedio" : "";
 
@@ -1614,7 +1865,7 @@
         : "Sin coincidencias con estos filtros."
     }</td></tr>`;
 
-    dealsFiltrados = deals; pintarDeals();
+    dealsFiltrados = dealsTabla; pintarDeals(); pintarColFilterEstado();
     pintarPanelMarca();
 
     // Mayoristas (packs)
@@ -1707,6 +1958,7 @@
     if(!CFG.onboarding) return;   // el onboarding con IA es de la instancia PA por ahora
     document.getElementById('onb-cats').innerHTML = CATS.map(c=>
       `<span class="onb-chip" onclick="onbChip(this,'${c.slug}')">${iconCat(c.slug)} ${c.nombre}</span>`).join('');
+    if(window.lucide) lucide.createIcons();
     if(!localStorage.getItem('db_onboarded')) document.getElementById('onb').classList.add('open');
   }
   function onbReset(){

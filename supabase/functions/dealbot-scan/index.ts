@@ -23,15 +23,127 @@ function tiendaNombre(r: string) {
 }
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+// Correcciones manuales de EAN mal cargado por la tienda (ej. usan el codigo de la caja/display
+// en vez de la unidad, lo que empareja mal el producto con el precio de otra tienda). Clave: "retailer:product_id".
+const EAN_OVERRIDES: Record<string, string> = {
+  "superxtra:16901": "34000002214", // Barras Chocolate Hersheys c/Almendras: traia el EAN de la caja de 16u ($35.55 vs $1.95)
+};
+
+function sinAcentos(s: string): string {
+  return (s || "").normalize("NFD").replace(/\p{Mn}/gu, "");
+}
+
+// ===== Navegacion por categoria real de cada tienda =====
+// En vez de buscar por palabra suelta (ruidoso: trae ropa de cama, shampoo, motor oil... y con topes
+// bajos de paginacion que cortan categorias grandes como "chocolate"), se navega directo al arbol de
+// categorias que cada tienda ya expone. `shared:true` = la ruta/id sirve para MAS de una categoria
+// nuestra a la vez (ej. "Conservas" cubre atun+sardinas+vegetales) -> se filtra por palabra clave
+// DENTRO de ese lote ya acotado (mucho mas preciso que buscar en todo el catalogo).
+type CatMapEntry = { paths?: string[]; ids?: number[]; handles?: string[]; shared?: boolean };
+const CATEGORY_MAP: Record<string, Record<string, CatMapEntry>> = {
+  superxtra: {
+    atun: { paths: ["supermercado/despensa/tuna"] },
+    sardinas: { paths: ["supermercado/despensa/sardina"] },
+    vegetales_enlatados: { paths: ["supermercado/despensa/vegetales-en-conservas", "supermercado/despensa/frijoles-y-otros"] },
+    arroz: { paths: ["supermercado/despensa/arroz"] },
+    cafe: { paths: ["supermercado/cafe-te-y-chocolates/cafe"] },
+    bebidas: { paths: ["supermercado/bebidas-y-jugos"] },
+    pasta: { paths: ["supermercado/despensa/pastas-spaghetti-y-macarrones"] },
+    aceite_cocina: { paths: ["supermercado/despensa/aceites"] },
+    leche: { paths: ["supermercado/lacteos-quesos-y-refrigerados/leches", "supermercado/lacteos-quesos-y-refrigerados/leches-enlatadas"] },
+    chocolates_galletas: { paths: ["supermercado/snacks-galletas-y-golosinas/chocolates", "supermercado/snacks-galletas-y-golosinas/galletas", "supermercado/despensa/cafe-te-y-chocolates"] },
+    cuidado_personal: { paths: ["cuidado-personal-y-belleza/higiene-bucal/pasta-dental", "cuidado-personal-y-belleza/cuidado-de-la-piel/desodorantes", "cuidado-personal-y-belleza/cuidado-de-la-piel/jabon", "cuidado-personal-y-belleza/cuidado-de-la-piel/cremas-corporales", "cuidado-personal-y-belleza/cuidado-del-cabello/shampoo-y-acondicionador"] },
+  },
+  machetazo: {
+    atun: { paths: ["supermercado/despensa/conservas"], shared: true },
+    sardinas: { paths: ["supermercado/despensa/conservas"], shared: true },
+    vegetales_enlatados: { paths: ["supermercado/despensa/conservas"], shared: true },
+    arroz: { paths: ["supermercado/despensa/arroz-y-granos"] },
+    cafe: { paths: ["supermercado/despensa/cafe-te-y-chocolate"] },
+    bebidas: { paths: ["supermercado/jugos-y-bebidas"] },
+    pasta: { paths: ["supermercado/despensa/pastas-alimenticias-y-pure-de-papas"] },
+    aceite_cocina: { paths: ["supermercado/despensa/aceites"] },
+    leche: { paths: ["supermercado/lacteos/leches"] },
+    chocolates_galletas: { paths: ["supermercado/golosinas-y-snacks/chocolates-y-golosinas", "supermercado/golosinas-y-snacks/galletas"] },
+    cuidado_personal: { paths: ["supermercado/cuidado-personal/higiene-personal", "supermercado/cuidado-personal/higiene-bucal", "supermercado/cuidado-personal/cuidado-de-la-piel"] },
+  },
+  super99: {
+    atun: { paths: ["despensa/enlatados-y-conservas/tuna-pescados-y-mariscos-en-conserva"], shared: true },
+    sardinas: { paths: ["despensa/enlatados-y-conservas/tuna-pescados-y-mariscos-en-conserva"], shared: true },
+    vegetales_enlatados: { paths: ["despensa/enlatados-y-conservas/vegetales-en-conserva"] },
+    arroz: { paths: ["despensa/arroz"] },
+    cafe: { paths: ["despensa/cafe-te-y-cremas/cafe-tostado-y-molido", "despensa/cafe-te-y-cremas/cafe-instantaneo"] },
+    bebidas: { paths: ["bebidas-no-alcoholicas"] },
+    pasta: { paths: ["despensa/pastas"] },
+    aceite_cocina: { paths: ["despensa/aceites-y-vinagres/aceite-de-oliva", "despensa/aceites-y-vinagres/aceites-vegetales"] },
+    leche: { paths: ["lacteos-y-huevos/leche-uht-y-fresca", "lacteos-y-huevos/leche-condensada-evaporada-y-cremas"] },
+    chocolates_galletas: { paths: ["despensa/chocolates-y-golosinas", "despensa/galletas"] },
+    cuidado_personal: { paths: ["higiene-belleza/cuidado-corporal"] },
+  },
+  ribasmith: {
+    atun: { ids: [12141], shared: true },
+    sardinas: { ids: [12141], shared: true },
+    // 13170 ("Conservas Y Encurtidos") es un padre demasiado amplio y con items mal etiquetados por la
+    // propia tienda (traia vinos, cartulina, dulces sueltos). Se usan las subcategorias hoja reales.
+    vegetales_enlatados: { ids: [27438, 27394, 27441, 27450, 27447, 45706, 27474, 13209, 13221, 45721, 45256] },
+    arroz: { ids: [13500] },
+    cafe: { ids: [44136] },
+    bebidas: { ids: [14034] },
+    pasta: { ids: [13767] },
+    aceite_cocina: { ids: [12660] },
+    leche: { ids: [8640] },
+    chocolates_galletas: { ids: [12951, 13449] },
+    cuidado_personal: { ids: [10929, 11031, 11337, 11391, 64525] },
+  },
+  superbaru: {
+    atun: { handles: ["tunas"] },
+    sardinas: { handles: ["sardinas-y-mariscos-enlatados"] },
+    vegetales_enlatados: { handles: ["vegetales-enlatados"] },
+    arroz: { handles: ["arroz"] },
+    cafe: { handles: ["cafes"] },
+    bebidas: { handles: ["bebidas-y-jugos"] },
+    pasta: { handles: ["pastas-spaghetti-y-macarrones"] },
+    aceite_cocina: { handles: ["aceites"] },
+    leche: { handles: ["leches", "leches-enlatadas"] },
+    chocolates_galletas: { handles: ["snacks-galletas-y-golosinas"] },
+    cuidado_personal: { handles: ["higiene-y-cuidado-personal", "higiene-bucal"] },
+  },
+};
+
 // VTEX (SuperXtra, Machetazo): commertialOffer.AvailableQuantity = 0 / IsAvailable false -> agotado.
 function mapVtex(arr: any[], retailer: string, dominio: string) {
-  return arr.map((p: any) => { const item = p.items?.[0] ?? {}; const offer = item.sellers?.[0]?.commertialOffer ?? {}; return { retailer, product_id: String(p.productId), ean: item.ean ?? "", nombre: p.productName ?? "", marca: p.brand ?? "", link: `https://${dominio}/${p.linkText}/p`, price: Number(offer.Price ?? 0), list_price: offer.ListPrice != null ? String(offer.ListPrice) : "", disponible: Number(offer.AvailableQuantity ?? 0) > 0 && offer.IsAvailable !== false }; }).filter((x: any) => x.price > 0);
+  return arr.map((p: any) => {
+    const item = p.items?.[0] ?? {}; const offer = item.sellers?.[0]?.commertialOffer ?? {};
+    const productId = String(p.productId);
+    const ean = EAN_OVERRIDES[`${retailer}:${productId}`] ?? (item.ean ?? "");
+    return { retailer, product_id: productId, ean, nombre: p.productName ?? "", marca: p.brand ?? "", link: `https://${dominio}/${p.linkText}/p`, price: Number(offer.Price ?? 0), list_price: offer.ListPrice != null ? String(offer.ListPrice) : "", disponible: Number(offer.AvailableQuantity ?? 0) > 0 && offer.IsAvailable !== false };
+  }).filter((x: any) => x.price > 0);
 }
 
 async function fetchXtra(term: string) {
   const res = await fetch(`https://www.superxtra.com/api/catalog_system/pub/products/search?ft=${encodeURIComponent(term)}&_from=0&_to=49`, { headers: { accept: "application/json", "user-agent": UA } });
   if (!res.ok) return [];
   return mapVtex(await res.json(), "superxtra", "www.superxtra.com");
+}
+
+// VTEX por categoria real (navega la URL del arbol de categorias en vez de buscar por palabra).
+// fq=C:{id} no funciono en pruebas; la ruta si (map=c,c,c... uno por segmento). Pagina de a 50 (max VTEX).
+async function fetchVtexPorCategoria(dominio: string, retailer: string, path: string, maxItems = 400): Promise<any[]> {
+  const map = path.split("/").map(() => "c").join(",");
+  const out: any[] = [];
+  for (let from = 0; from < maxItems; from += 50) {
+    const to = from + 49;
+    let res: Response;
+    try { res = await fetch(`https://${dominio}/api/catalog_system/pub/products/search/${path}?map=${map}&_from=${from}&_to=${to}`, { headers: { accept: "application/json", "user-agent": UA } }); }
+    catch { break; }
+    if (!res.ok) break;
+    let json: any;
+    try { json = await res.json(); } catch { break; }
+    if (!Array.isArray(json) || !json.length) break;
+    out.push(...mapVtex(json, retailer, dominio));
+    if (json.length < 50) break;
+  }
+  return out;
 }
 
 async function fetchMachetazo(term: string) {
@@ -85,12 +197,30 @@ async function fetchMsMega(term: string) {
   return prods;
 }
 
-async function fetchSuper99(term: string) {
+async function fetchSuper99(term: string, maxPages = 5) {
   const ctx = { customerGroup: "b6589fc6ab0dc82cf12099d1c2d40ab994e8410c", userViewHistory: [] };
   const filter = [{ attribute: "visibility", in: ["Search", "Catalog, Search"] }];
   const seen = new Set<string>(); const out: any[] = [];
-  for (let pg = 1; pg <= 5; pg++) {
+  for (let pg = 1; pg <= maxPages; pg++) {
     const body = { query: S99_QUERY, variables: { phrase: term, pageSize: 48, currentPage: pg, filter, context: ctx } };
+    const res = await fetch(S99_ENDPOINT, { method: "POST", headers: S99_HEADERS, body: JSON.stringify(body) });
+    if (!res.ok) break;
+    const json = await res.json(); const items = json?.data?.productSearch?.items ?? [];
+    if (!items.length) break;
+    for (const it of items) { const sku = it.product?.sku; if (!sku || seen.has(sku)) continue; seen.add(sku); const attrs = it.productView?.attributes ?? []; const upc = attrs.find((a: any) => a.name === "upc")?.value ?? ""; const marca = attrs.find((a: any) => a.name === "marca")?.value ?? ""; const mp = it.product?.price_range?.minimum_price ?? {}; out.push({ retailer: "super99", product_id: String(sku), ean: String(upc), nombre: it.product?.name ?? "", marca: String(marca), link: `https://www.super99.com/catalogsearch/result/?q=${encodeURIComponent(it.product?.name ?? "")}`, price: Number(mp.final_price?.value ?? 0), list_price: mp.regular_price?.value ? String(mp.regular_price.value) : "" }); }
+    if (items.length < 48) break;
+  }
+  return out.filter((x) => x.price > 0);
+}
+
+// Super99 por categoria real: filtra por el atributo "categories" (facet confirmado) en vez de
+// buscar por palabra. phrase es obligatorio pero su contenido no importa cuando se filtra por categoria.
+async function fetchSuper99PorCategoria(path: string, maxPages = 15): Promise<any[]> {
+  const ctx = { customerGroup: "b6589fc6ab0dc82cf12099d1c2d40ab994e8410c", userViewHistory: [] };
+  const filter = [{ attribute: "visibility", in: ["Search", "Catalog, Search"] }, { attribute: "categories", eq: path }];
+  const seen = new Set<string>(); const out: any[] = [];
+  for (let pg = 1; pg <= maxPages; pg++) {
+    const body = { query: S99_QUERY, variables: { phrase: " ", pageSize: 48, currentPage: pg, filter, context: ctx } };
     const res = await fetch(S99_ENDPOINT, { method: "POST", headers: S99_HEADERS, body: JSON.stringify(body) });
     if (!res.ok) break;
     const json = await res.json(); const items = json?.data?.productSearch?.items ?? [];
@@ -139,6 +269,28 @@ async function fetchSuperBaru(term: string) {
   return results.filter((x: any) => x.price > 0);
 }
 
+// Super Baru por coleccion completa (Shopify): la busqueda predictiva usada arriba tiene un tope
+// DURO de 10 resultados fijado por la plataforma (no ajustable); /collections/{handle}/products.json
+// no tiene ese limite y pagina de a 250.
+async function fetchSuperBaruPorColeccion(handle: string, maxPages = 5): Promise<any[]> {
+  const out: any[] = [];
+  for (let pg = 1; pg <= maxPages; pg++) {
+    const res = await fetch(`https://superbaru.com/collections/${handle}/products.json?limit=250&page=${pg}`, { headers: { "user-agent": UA, accept: "application/json" } });
+    if (!res.ok) break;
+    const json = await res.json(); const prods = json?.products ?? [];
+    if (!prods.length) break;
+    const results = await Promise.all(prods.map(async (p: any) => {
+      let ean = "", list = "";
+      try { const pj = await fetch(`https://superbaru.com/products/${p.handle}.json`, { headers: { "user-agent": UA } }); if (pj.ok) { const d = await pj.json(); const v = d.product?.variants?.[0] ?? {}; ean = v.barcode ?? ""; list = v.compare_at_price ?? ""; } } catch { /* ignore */ }
+      const v0 = p.variants?.[0] ?? {};
+      return { retailer: "superbaru", product_id: String(p.id), ean: String(ean ?? ""), nombre: p.title ?? "", marca: p.vendor ?? "", link: `https://superbaru.com/products/${p.handle}`, price: Number(v0.price ?? 0), list_price: list ? String(list) : "" };
+    }));
+    out.push(...results);
+    if (prods.length < 250) break;
+  }
+  return out.filter((x: any) => x.price > 0);
+}
+
 // Riba Smith (premium): Magento GraphQL. El sku es el EAN-13 SIN digito verificador (12 digitos);
 // se recalcula el check digit para reconstruir el EAN-13 y emparejar con las otras tiendas.
 function ean13(d: string): string {
@@ -152,6 +304,22 @@ async function fetchRibaSmith(term: string) {
   const seen = new Set<string>(); const out: any[] = [];
   for (let pg = 1; pg <= 4; pg++) {
     const res = await fetch("https://www.ribasmith.com/graphql", { method: "POST", headers: { "content-type": "application/json", "user-agent": UA }, body: JSON.stringify({ query, variables: { s: term, pg } }) });
+    if (!res.ok) break;
+    const json = await res.json();
+    const items = json?.data?.products?.items ?? [];
+    if (!items.length) break;
+    for (const p of items) { const sku = String(p.sku ?? ""); if (!sku || seen.has(sku)) continue; seen.add(sku); const mp = p.price_range?.minimum_price ?? {}; out.push({ retailer: "ribasmith", product_id: sku, ean: ean13(sku), nombre: p.name ?? "", marca: "", link: `https://www.ribasmith.com/catalogsearch/result/?q=${encodeURIComponent(p.name ?? "")}`, price: Number(mp.final_price?.value ?? 0), list_price: mp.regular_price?.value ? String(mp.regular_price.value) : "" }); }
+    if (items.length < 50) break;
+  }
+  return out.filter((x) => x.price > 0);
+}
+
+// Riba Smith por categoria real (category_id, confirmado que filtra bien) en vez de buscar por palabra.
+async function fetchRibaSmithPorCategoria(catId: number, maxPages = 20): Promise<any[]> {
+  const query = "query C($id:String!,$pg:Int!){ products(filter:{category_id:{eq:$id}}, pageSize:50, currentPage:$pg){ items { name sku price_range { minimum_price { final_price { value } regular_price { value } } } } } }";
+  const seen = new Set<string>(); const out: any[] = [];
+  for (let pg = 1; pg <= maxPages; pg++) {
+    const res = await fetch("https://www.ribasmith.com/graphql", { method: "POST", headers: { "content-type": "application/json", "user-agent": UA }, body: JSON.stringify({ query, variables: { id: String(catId), pg } }) });
     if (!res.ok) break;
     const json = await res.json();
     const items = json?.data?.products?.items ?? [];
@@ -202,6 +370,32 @@ function mapIA(arr: any[], retailer: string, linkDe: (nombre: string) => string)
 }
 
 const FETCHERS = [fetchXtra, fetchMachetazo, fetchRey, fetchMsMega, fetchSuper99, fetchSuperCarnes, fetchSuperBaru, fetchRibaSmith];
+// fallback por palabra clave, usado solo cuando la tienda no tiene mapeo de categoria para esta categoria nuestra
+const RETAILER_FETCHER: Record<string, (term: string) => Promise<any[]>> = {
+  superxtra: fetchXtra, machetazo: fetchMachetazo, superrey: fetchRey, msmega: fetchMsMega,
+  super99: fetchSuper99, supercarnes: fetchSuperCarnes, superbaru: fetchSuperBaru, ribasmith: fetchRibaSmith,
+};
+const RETAILERS = Object.keys(RETAILER_FETCHER);
+
+// cache por corrida: una ruta/id compartido entre varias categorias nuestras (ej. "Conservas" de
+// Machetazo sirve para atun+sardinas+vegetales) se trae UNA sola vez, no una vez por categoria.
+const catFetchCache = new Map<string, Promise<any[]>>();
+async function fetchPorCategoriaRetailer(retailer: string, slug: string): Promise<any[] | null> {
+  const mapa = CATEGORY_MAP[retailer]?.[slug];
+  if (!mapa) return null; // sin mapeo -> el llamador usa busqueda por palabra como antes
+  const cacheKey = retailer + "::" + JSON.stringify(mapa.paths ?? mapa.ids ?? mapa.handles);
+  if (!catFetchCache.has(cacheKey)) {
+    let p: Promise<any[]>;
+    if (retailer === "superxtra") p = Promise.all((mapa.paths ?? []).map((path) => fetchVtexPorCategoria("www.superxtra.com", "superxtra", path))).then((a) => a.flat());
+    else if (retailer === "machetazo") p = Promise.all((mapa.paths ?? []).map((path) => fetchVtexPorCategoria("www.elmachetazo.com", "machetazo", path))).then((a) => a.flat());
+    else if (retailer === "super99") p = Promise.all((mapa.paths ?? []).map((path) => fetchSuper99PorCategoria(path))).then((a) => a.flat());
+    else if (retailer === "ribasmith") p = Promise.all((mapa.ids ?? []).map((id) => fetchRibaSmithPorCategoria(id))).then((a) => a.flat());
+    else if (retailer === "superbaru") p = Promise.all((mapa.handles ?? []).map((h) => fetchSuperBaruPorColeccion(h))).then((a) => a.flat());
+    else p = Promise.resolve([]);
+    catFetchCache.set(cacheKey, p.catch(() => []));
+  }
+  return await catFetchCache.get(cacheKey)!;
+}
 
 async function rpc(fn: string, args: any) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { "content-type": "application/json", apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}` }, body: JSON.stringify(args) });
@@ -214,6 +408,11 @@ async function getCategorias() {
 }
 async function insertAlerta(a: any) { await fetch(`${SUPABASE_URL}/rest/v1/dealbot_alertas`, { method: "POST", headers: { "content-type": "application/json", apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}`, prefer: "return=minimal" }, body: JSON.stringify({ producto_id: a.producto_id, price: a.price, list_price: a.list_price, caida_pct: a.desc_pct, motivo: a.motivo }) }); }
 async function sendTelegram(text: string) { if (!TG_TOKEN || !TG_CHAT) return; await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: TG_CHAT, text, parse_mode: "HTML", disable_web_page_preview: true }) }); }
+// interruptor de alertas de Telegram (tabla dealbot_config, clave 'alertas_telegram'): se prende/apaga por SQL sin redesplegar
+async function alertasActivas() {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/dealbot_config?clave=eq.alertas_telegram&select=valor`, { headers: { apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}` } }).then((x) => x.json()).catch(() => []);
+  return !(Array.isArray(r) && r[0]?.valor === "off");
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -236,8 +435,23 @@ Deno.serve(async (req: Request) => {
     const seen = new Set<string>(); const items: any[] = []; const porCat: any = {};
     for (const cat of cats) {
       const excl = (cat.excluir ?? []).map((e: string) => e.toLowerCase());
+      const terminosIncl = (cat.terminos ?? []).map((t: string) => sinAcentos(t.toLowerCase()));
       const tasks: Promise<any[]>[] = [];
-      for (const term of cat.terminos) for (const f of FETCHERS) tasks.push(f(term).catch(() => []));
+      for (const retailer of RETAILERS) {
+        const mapa = CATEGORY_MAP[retailer]?.[cat.slug];
+        if (mapa) {
+          const p = fetchPorCategoriaRetailer(retailer, cat.slug).then((items) => {
+            if (!items) return [];
+            if (!mapa.shared) return items; // categoria exclusiva: se confia en la clasificacion propia de la tienda
+            // categoria compartida (ej. "Conservas" sirve para atun+sardinas+vegetales): dentro de ese
+            // lote YA acotado, filtrar por las palabras propias de ESTA categoria nuestra
+            return items.filter((it: any) => terminosIncl.some((t: string) => sinAcentos((it.nombre ?? "").toLowerCase()).includes(t)));
+          }).catch(() => []);
+          tasks.push(p);
+        } else {
+          for (const term of cat.terminos) tasks.push(RETAILER_FETCHER[retailer](term).catch(() => []));
+        }
+      }
       const found = (await Promise.all(tasks)).flat();
       let added = 0;
       for (const it of found) {
@@ -254,9 +468,11 @@ Deno.serve(async (req: Request) => {
     let alertados = 0;
     if (deals.length) {
       const top = deals.sort((a, b) => Number(b.desc_pct) - Number(a.desc_pct)).slice(0, 10);
-      const lineas = top.map((d, i) => { const was = d.list_price && Number(d.list_price) > Number(d.price) ? ` (antes $${Number(d.list_price).toFixed(2)})` : ""; return `${i + 1}️⃣ <b>${d.nombre}</b>\n   ${tiendaNombre(d.retailer)} → <b>$${Number(d.price).toFixed(2)}</b>${was} ↓${Number(d.desc_pct).toFixed(1)}%`; }).join("\n\n");
-      await sendTelegram(`🔥 <b>DealBot · Caídas de precio</b>\n\n${lineas}\n\n📊 https://dealbot-atun.vercel.app`);
-      for (const d of top) { await insertAlerta(d); alertados++; }
+      if (await alertasActivas()) {
+        const lineas = top.map((d, i) => { const was = d.list_price && Number(d.list_price) > Number(d.price) ? ` (antes $${Number(d.list_price).toFixed(2)})` : ""; return `${i + 1}️⃣ <b>${d.nombre}</b>\n   ${tiendaNombre(d.retailer)} → <b>$${Number(d.price).toFixed(2)}</b>${was} ↓${Number(d.desc_pct).toFixed(1)}%`; }).join("\n\n");
+        await sendTelegram(`🔥 <b>DealBot · Caídas de precio</b>\n\n${lineas}\n\n📊 https://dealbot-panama.vercel.app`);
+      }
+      for (const d of top) { await insertAlerta(d); alertados++; }   // las alertas del dashboard siguen siempre
     }
     // alertar solo ante rotura sistemica (3+ rescates = rediseno real), no por una pagina caprichosa aislada
     if (rescates.size && haikuUsos >= 3) await sendTelegram(`🛠 <b>DealBot · Aviso técnico</b>\nEl formato de <b>${[...rescates].join(" y ")}</b> cambió — los precios se extrajeron con IA de respaldo (Haiku, ${haikuUsos} llamadas). Conviene actualizar el parser.`);
