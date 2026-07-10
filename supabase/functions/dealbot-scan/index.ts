@@ -403,8 +403,42 @@ async function rpc(fn: string, args: any) {
   return await res.json();
 }
 async function getCategorias() {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/dealbot_categorias?activo=eq.true&pais=eq.PA&select=slug,terminos,excluir&order=orden`, { headers: { apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}` } });
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/dealbot_categorias?activo=eq.true&pais=eq.PA&select=slug,nombre,terminos,excluir&order=orden`, { headers: { apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}` } });
   return res.ok ? await res.json() : [];
+}
+// modo traza: construye el RAZONAMIENTO del scraper (metodo/ruta/embudo por categoria x tienda) sin escribir en BD
+async function construirTraza(cats: any[]) {
+  const seen = new Set<string>(); const traza: any[] = []; let scrapeados = 0;
+  for (const cat of cats) {
+    const excl = (cat.excluir ?? []).map((e: string) => e.toLowerCase());
+    const terminosIncl = (cat.terminos ?? []).map((t: string) => sinAcentos(t.toLowerCase()));
+    const perStore = await Promise.all(RETAILERS.map(async (retailer) => {
+      const mapa = CATEGORY_MAP[retailer]?.[cat.slug];
+      try {
+        if (mapa) {
+          const items0 = (await fetchPorCategoriaRetailer(retailer, cat.slug)) ?? [];
+          const filtrados = !mapa.shared ? items0 : items0.filter((it: any) => terminosIncl.some((t: string) => sinAcentos((it.nombre ?? "").toLowerCase()).includes(t)));
+          const detalle = (mapa.paths ?? (mapa.ids ?? mapa.handles ?? []).map(String)).join(", ");
+          return { items: filtrados, paso: { tienda: retailer, metodo: "arbol", detalle, shared: !!mapa.shared, crudos: items0.length, tras_filtro: filtrados.length, aportados: 0 } };
+        }
+        const kw = (await Promise.all((cat.terminos ?? []).map((term: string) => RETAILER_FETCHER[retailer](term).catch(() => [])))).flat();
+        return { items: kw, paso: { tienda: retailer, metodo: "palabra", detalle: (cat.terminos ?? []).join(", "), shared: false, crudos: kw.length, tras_filtro: kw.length, aportados: 0 } };
+      } catch { return { items: [], paso: { tienda: retailer, metodo: "error", detalle: "", shared: false, crudos: 0, tras_filtro: 0, aportados: 0 } }; }
+    }));
+    const found = perStore.flatMap((s) => s.items); const pasos = perStore.map((s) => s.paso);
+    let added = 0; const apt: Record<string, number> = {};
+    for (const it of found) {
+      const nm = (it.nombre ?? "").toLowerCase();
+      if (excl.some((e: string) => nm.includes(e))) continue;
+      const k = it.retailer + "|" + it.product_id;
+      if (seen.has(k)) continue; seen.add(k);
+      added++; apt[it.retailer] = (apt[it.retailer] || 0) + 1;
+    }
+    for (const p of pasos) p.aportados = apt[p.tienda] || 0;
+    scrapeados += added;
+    traza.push({ slug: cat.slug, nombre: cat.nombre ?? cat.slug, terminos: cat.terminos ?? [], excluir: cat.excluir ?? [], aportados_total: added, pasos });
+  }
+  return { traza, scrapeados };
 }
 async function insertAlerta(a: any) { await fetch(`${SUPABASE_URL}/rest/v1/dealbot_alertas`, { method: "POST", headers: { "content-type": "application/json", apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}`, prefer: "return=minimal" }, body: JSON.stringify({ producto_id: a.producto_id, price: a.price, list_price: a.list_price, caida_pct: a.desc_pct, motivo: a.motivo }) }); }
 async function sendTelegram(text: string) { if (!TG_TOKEN || !TG_CHAT) return; await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: TG_CHAT, text, parse_mode: "HTML", disable_web_page_preview: true }) }); }
@@ -429,9 +463,14 @@ Deno.serve(async (req: Request) => {
     const mini = (a: any[]) => a.slice(0, 3).map((x: any) => ({ n: x.nombre, p: x.price, e: x.ean }));
     return new Response(JSON.stringify({ supercarnes: { regex: scRegex.length, ia: scIA.length, muestra_regex: mini(scRegex), muestra_ia: mini(scIA) }, msmega: { regex: msRegex.length, ia: msIA.length, muestra_regex: mini(msRegex), muestra_ia: mini(msIA) }, haiku_llamadas: haikuUsos, ms: Date.now() - t0 }), { headers: CORS });
   }
+  const explain = new URL(req.url).searchParams.get("explain") === "1";
   try {
     const cats = await getCategorias();
     if (!cats.length) return new Response(JSON.stringify({ ok: false, error: "sin categorias" }), { status: 400, headers: CORS });
+    if (explain) {
+      const { traza, scrapeados } = await construirTraza(cats);
+      return new Response(JSON.stringify({ ok: true, pais: "PA", modo: "explain", traza, tiendas: RETAILERS, scrapeados, ms: Date.now() - t0 }), { headers: CORS });
+    }
     const seen = new Set<string>(); const items: any[] = []; const porCat: any = {};
     for (const cat of cats) {
       const excl = (cat.excluir ?? []).map((e: string) => e.toLowerCase());
