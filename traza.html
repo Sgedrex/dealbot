@@ -3,105 +3,128 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Traza del scraper · DealBot</title>
+<title>Flujo del scraper · DealBot</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>" />
 <style>
   :root{
-    --bg:#eef1ee; --card:#fff; --card2:#f5f7f5; --line:#e2e7e2; --txt:#1a221c; --mut:#6b7770;
-    --green:#15a34a; --green-d:#0f7a37; --greenbg:#e7f6ec;
-    --arbol:#15a34a; --arbolbg:#e7f6ec; --palabra:#2563eb; --palabrabg:#e6efff; --error:#dc2626; --errorbg:#fdecec;
+    --bg:#0f1512; --panel:#151c18; --card:#1b241e; --card2:#212b24; --line:#2c382f; --txt:#e8efe9; --mut:#8ea497;
+    --green:#2fd27a; --green-d:#7ff0af; --greenbg:#13301f;
+    --arbol:#2fd27a; --arbolbg:#13301f; --palabra:#5aa2ff; --palabrabg:#132238; --error:#ff6b6b; --errorbg:#301717;
+    --amber:#f0b429; --amberbg:#302713; --violet:#a78bfa;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45}
-  .wrap{max-width:1080px;margin:0 auto;padding:26px 18px 60px}
-  header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
-  h1{font-size:22px;margin:0 0 3px;letter-spacing:-.4px}
-  h1 .tag{background:var(--green);color:#fff;border-radius:7px;padding:1px 8px;font-size:15px;vertical-align:2px}
-  .sub{color:var(--mut);font-size:13.5px;max-width:660px}
-  .runbtn{background:var(--green);color:#fff;border:none;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap;box-shadow:0 6px 16px rgba(21,163,74,.25);transition:.15s}
-  .runbtn:hover{background:var(--green-d)}
-  .runbtn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
-  .status{font-size:13px;color:var(--mut);margin:14px 0 4px;min-height:20px}
+  body{margin:0;background:radial-gradient(1200px 600px at 20% -10%, #16211b 0%, var(--bg) 60%);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45;min-height:100vh}
+  .wrap{max-width:900px;margin:0 auto;padding:26px 18px 80px}
+  header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+  h1{font-size:22px;margin:0 0 4px;letter-spacing:-.4px}
+  h1 .tag{background:var(--green);color:#04120a;border-radius:7px;padding:1px 8px;font-size:15px;vertical-align:2px;font-weight:900}
+  .sub{color:var(--mut);font-size:13.5px;max-width:640px}
+  .runbtn{background:linear-gradient(180deg,var(--green),#25b869);color:#04120a;border:none;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap;box-shadow:0 8px 22px rgba(47,210,122,.28);transition:.15s}
+  .runbtn:hover{transform:translateY(-1px)}
+  .runbtn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none;transform:none}
+  .status{font-size:13px;color:var(--mut);margin:14px 0 8px;min-height:20px}
   .status .sp{display:inline-block;animation:spin 1s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 20px}
-  .lg{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:var(--card)}
-  .dot{width:9px;height:9px;border-radius:50%}
-  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-  .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
-  .tile .v{font-size:26px;font-weight:800;letter-spacing:-.5px}
-  .tile .l{font-size:12px;color:var(--mut);font-weight:600;margin-top:2px}
-  .cat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.03)}
-  .cat-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px}
-  .cat-h .nm{font-size:17px;font-weight:800;letter-spacing:-.3px}
-  .cat-h .ap{font-size:13px;font-weight:800;color:var(--green-d);background:var(--greenbg);border-radius:999px;padding:3px 11px}
-  .cat-meta{font-size:12px;color:var(--mut);margin-bottom:12px}
-  .cat-meta code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:11.5px}
-  table{width:100%;border-collapse:collapse}
-  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line)}
-  td{padding:9px 8px;border-bottom:1px solid var(--card2);font-size:13px;vertical-align:middle}
-  tr:last-child td{border-bottom:none}
-  .store{font-weight:800}
-  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;border-radius:7px;padding:3px 9px;white-space:nowrap}
+
+  /* ===== Pipeline vertical ===== */
+  .flow{position:relative;margin-top:8px}
+  .stage{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;gap:13px;align-items:flex-start}
+  .stage .ic{font-size:22px;line-height:1.1;width:30px;text-align:center;flex:none;margin-top:1px}
+  .stage .body{flex:1;min-width:0}
+  .stage .t{font-size:15px;font-weight:800;letter-spacing:-.2px}
+  .stage .d{font-size:12.5px;color:var(--mut);margin-top:2px;line-height:1.5}
+  .stage .d code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;color:var(--green-d)}
+  .stage.accent{border-color:#2f6b46;box-shadow:0 0 0 1px #1c3a26 inset}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .chip{font-size:11px;font-weight:700;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+  /* conector entre stages */
+  .conn{display:flex;flex-direction:column;align-items:center;gap:0;padding:2px 0}
+  .conn .line{width:2px;height:16px;background:var(--line)}
+  .conn .pill{font-size:11.5px;font-weight:800;color:var(--green-d);background:var(--greenbg);border:1px solid #234d33;border-radius:999px;padding:2px 12px}
+  .conn .chev{color:var(--mut);font-size:12px;margin-top:-2px}
+  /* rama lateral (telegram) */
+  .side{margin:6px 0 6px 44px;border-left:2px dashed var(--line);padding-left:16px;position:relative}
+  .side::before{content:"";position:absolute;left:-2px;top:-6px;height:26px;width:2px;background:var(--line)}
+
+  .toggle{margin-top:10px;font-size:12.5px;font-weight:800;color:var(--green-d);background:var(--greenbg);border:1px solid #234d33;border-radius:9px;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;user-select:none}
+  .toggle .cv{transition:transform .18s}
+  .tree.collapsed{display:none}
+
+  /* ===== Árbol de decisiones (dentro del stage scraper) ===== */
+  .tree{margin-top:12px}
+  .branches{margin-left:6px;border-left:2px solid var(--line)}
+  .branch{position:relative}
+  .cat{position:relative;display:flex;align-items:center;gap:9px;margin:8px 0 3px 20px;padding:8px 12px;background:var(--card);border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:.12s;user-select:none}
+  .cat:hover{border-color:#3a4a3e;background:var(--card2)}
+  .cat::before{content:"";position:absolute;left:-20px;top:50%;width:20px;height:2px;background:var(--line)}
+  .cat .caret{transition:transform .18s;color:var(--mut);font-size:11px;width:12px}
+  .branch.collapsed .caret{transform:rotate(-90deg)}
+  .cat .cico{font-size:16px}
+  .cat .cnm{font-weight:800;font-size:14px}
+  .cat .cterm{font-size:10.5px;color:var(--mut);font-family:ui-monospace,Menlo,monospace}
+  .cat .cpill{margin-left:auto;font-size:11.5px;font-weight:800;color:var(--green-d);background:var(--greenbg);border:1px solid #234d33;border-radius:999px;padding:2px 10px}
+  .leaves{margin-left:36px;border-left:2px dashed var(--line);overflow:hidden;transition:max-height .25s ease}
+  .branch.collapsed .leaves{max-height:0 !important;border-color:transparent}
+  .leaf{position:relative;display:flex;align-items:center;gap:9px;margin:5px 0 5px 18px;padding:6px 11px;background:var(--panel);border:1px solid var(--line);border-radius:9px;font-size:12px}
+  .leaf .store{font-weight:800;min-width:92px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;border-radius:7px;padding:2px 8px;white-space:nowrap}
   .b-arbol{background:var(--arbolbg);color:var(--arbol)}
   .b-palabra{background:var(--palabrabg);color:var(--palabra)}
   .b-error{background:var(--errorbg);color:var(--error)}
-  .shared{font-size:10px;font-weight:800;color:#b45309;background:#fef3c7;border-radius:5px;padding:1px 6px;margin-left:5px}
-  .ruta{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--mut);word-break:break-all}
-  .funnel{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
-  .fbar{height:8px;border-radius:4px;min-width:3px}
+  .shared{font-size:9px;font-weight:800;color:var(--amber);background:var(--amberbg);border:1px solid #4a3c15;border-radius:5px;padding:1px 6px}
+  .ruta{flex:1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--mut);word-break:break-all;min-width:110px}
+  .funnel{display:flex;align-items:center;gap:5px;font-weight:800;white-space:nowrap;margin-left:auto}
   .fnum{font-variant-numeric:tabular-nums}
-  .arrow{color:var(--line);font-weight:400}
-  .ap0{color:var(--mut)}
-  .foot{margin-top:26px;font-size:12px;color:var(--mut);text-align:center;line-height:1.7}
-  @media(max-width:640px){.tiles{grid-template-columns:repeat(2,1fr)}.ruta{display:none}}
+  .arrow{color:var(--line)}
+  .fout{color:var(--green-d);font-weight:900}
+  .fout.z{color:var(--mut);font-weight:700}
+  .legend{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 2px}
+  .lg{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--panel)}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .foot{margin-top:30px;font-size:12px;color:var(--mut);text-align:center;line-height:1.7}
+  @media(max-width:680px){.ruta{display:none}.leaf .store{min-width:64px}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div>
-      <h1>🧠 Cómo piensa el scraper <span class="tag" id="tag">··</span></h1>
-      <div class="sub">Traza en vivo de una corrida de rastreo: por cada categoría y tienda, qué <b>método</b> usa (navegar el árbol de categoría vs. buscar por palabra), qué <b>ruta</b> recorre y cómo filtra los productos hasta lo que aporta. No escribe nada en la base — solo muestra el razonamiento.</div>
+      <h1>🧠 Flujo del scraper <span class="tag" id="tag">··</span></h1>
+      <div class="sub">Todo el recorrido de una corrida real: desde la <b>configuración</b> (qué se monitorea) hasta el <b>dashboard</b>, pasando por el <b>scraper</b> (con su árbol de decisiones por tienda), el <b>procesamiento</b> y la <b>base de datos</b>. Corre de verdad las tiendas pero no escribe nada.</div>
     </div>
     <button class="runbtn" id="run" onclick="correr()">▶ Correr traza en vivo</button>
   </header>
 
-  <div class="legend">
-    <span class="lg"><span class="dot" style="background:var(--arbol)"></span> 🌳 Árbol de categoría — navega la ruta real de la tienda</span>
-    <span class="lg"><span class="dot" style="background:var(--palabra)"></span> 🔤 Palabra clave — búsqueda por término</span>
-    <span class="lg"><span class="shared" style="margin:0">shared</span> ruta que agrupa varias categorías (se filtra por término)</span>
-  </div>
-
-  <div class="status" id="status">Tocá <b>“Correr traza en vivo”</b> para ver cómo razona el scraper ahora mismo (tarda ~20-30s: consulta las tiendas de verdad).</div>
-
-  <div id="tiles" class="tiles" style="display:none"></div>
+  <div class="status" id="status">Tocá <b>“Correr traza en vivo”</b> para ver el flujo completo ahora mismo (tarda ~20-60s: consulta las tiendas de verdad).</div>
   <div id="out"></div>
-
   <div class="foot" id="foot"></div>
 </div>
 
 <script>
   const SB = "https://xjkpaxsptfmpkgtymbuu.supabase.co/functions/v1";
-  // pais por hostname (mismo criterio que el dashboard): colombia -> CO, si no -> PA. ?pais= lo fuerza.
   const qp = new URLSearchParams(location.search).get('pais');
   const PAIS = qp === 'CO' || (qp !== 'PA' && location.hostname.includes('colombia')) ? 'CO' : 'PA';
   const CFG = {
-    PA: { tag:'PA', pais:'Panamá', endpoint: SB+'/dealbot-scan?explain=1', tiendas:'SuperXtra · Super Rey · Super99 · SuperCarnes · Super Barú · El Machetazo · Riba Smith · MsMega' },
-    CO: { tag:'CO', pais:'Colombia', endpoint: SB+'/dealbot-scan-co?explain=1', tiendas:'Éxito · Carulla · Jumbo · Olímpica · Makro' },
+    PA: { tag:'PA', pais:'Panamá', endpoint: SB+'/dealbot-scan?explain=1', dominio:'dealbot-panama.vercel.app',
+          cron:'7:00am y 7:00pm (hora Panamá)',
+          vistas:['dealbot_comparador','dealbot_ranking','dealbot_movimientos','dealbot_inflacion'] },
+    CO: { tag:'CO', pais:'Colombia', endpoint: SB+'/dealbot-scan-co?explain=1', dominio:'dealbot-colombia.vercel.app',
+          cron:'7:30am y 7:30pm (hora Colombia)',
+          vistas:['dealbot_comparador_co','dealbot_ranking_co','dealbot_movimientos_co','dealbot_inflacion_co'] },
   }[PAIS];
   const STORE_NAME = { superxtra:'SuperXtra', superrey:'Super Rey', super99:'Super99', supercarnes:'SuperCarnes', superbaru:'Super Barú', machetazo:'El Machetazo', ribasmith:'Riba Smith', msmega:'MsMega', exito:'Éxito', carulla:'Carulla', jumbo:'Jumbo', olimpica:'Olímpica', makro:'Makro' };
   const CAT_ICON = { atun:'🥫', sardinas:'🐟', vegetales_enlatados:'🥬', duraznos:'🍑', ensaladas:'🥗', comida_mascotas:'🐱', avena:'🥣', harina:'🌾', pasta_tomate:'🍅', arroz:'🍚', cafe:'☕', bebidas:'🥤', pasta:'🍝', aceite_cocina:'🫒', leche:'🥛', chocolates_galletas:'🍫', cuidado_personal:'🧴' };
   const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const COL = { arbol:'var(--arbol)', palabra:'var(--palabra)', error:'var(--error)' };
+  const nf = n => (n||0).toLocaleString('es-CO');
 
   document.getElementById('tag').textContent = CFG.tag;
-  document.title = 'Traza del scraper · DealBot ' + CFG.tag;
-  document.getElementById('foot').innerHTML = 'DealBot · Traza del scraper ' + CFG.pais + ' — ' + CFG.tiendas + '<br/>El embudo <b>crudos → tras filtro → aportados</b> muestra cuántos productos trae la tienda, cuántos quedan tras acotar por término, y cuántos suma tras quitar duplicados y exclusiones.';
+  document.title = 'Flujo del scraper · DealBot ' + CFG.tag;
+  document.getElementById('foot').innerHTML = 'DealBot · Flujo del scraper ' + CFG.pais + '<br/>El árbol dentro de “Scraper” muestra, por categoría y tienda, la decisión (🌳 navegar el árbol de categoría vs 🔤 buscar por palabra) y el embudo crudos → filtro → aportados.';
 
   async function correr(){
     const btn = document.getElementById('run'); const st = document.getElementById('status');
-    btn.disabled = true;
-    const t0 = Date.now();
+    btn.disabled = true; const t0 = Date.now();
     let secs = 0; const tick = setInterval(()=>{ secs++; st.innerHTML = `<span class="sp">⏳</span> Corriendo la traza… consultando las tiendas en vivo (${secs}s)`; }, 1000);
     st.innerHTML = `<span class="sp">⏳</span> Corriendo la traza… consultando las tiendas en vivo`;
     try{
@@ -110,58 +133,79 @@
       clearInterval(tick);
       if(!d.ok){ st.textContent = 'Error: ' + (d.error||'respuesta inesperada'); btn.disabled=false; return; }
       render(d);
-      st.innerHTML = `✅ Traza completa en ${(( Date.now()-t0)/1000).toFixed(1)}s · ${d.traza.length} categorías · ${d.scrapeados} productos que se guardarían`;
-    }catch(e){
-      clearInterval(tick);
-      st.textContent = 'No se pudo correr la traza: ' + e.message;
-    }
+      st.innerHTML = `✅ Traza completa en ${((Date.now()-t0)/1000).toFixed(1)}s`;
+    }catch(e){ clearInterval(tick); st.textContent = 'No se pudo correr la traza: ' + e.message; }
     btn.disabled = false;
   }
 
-  function render(d){
-    const nArbol = d.traza.reduce((a,c)=>a + c.pasos.filter(p=>p.metodo==='arbol').length, 0);
-    const tiles = [ ['🗂️', d.traza.length, 'Categorías'], ['🏪', d.tiendas.length, 'Tiendas'], ['🌳', nArbol, 'Rastreos por árbol'], ['📦', d.scrapeados, 'Productos'] ];
-    const tl = document.getElementById('tiles');
-    tl.style.display = 'grid';
-    tl.innerHTML = tiles.map(t=>`<div class="tile"><div class="v">${t[1]}</div><div class="l">${t[0]} ${t[2]}</div></div>`).join('');
+  function leaf(p){
+    const met = p.metodo==='arbol'?{c:'b-arbol',i:'🌳',l:'árbol'}:(p.metodo==='error'?{c:'b-error',i:'⚠️',l:'error'}:{c:'b-palabra',i:'🔤',l:'palabra'});
+    const col = COL[p.metodo] || COL.palabra;
+    const shared = p.shared ? '<span class="shared">shared → filtra</span>' : '';
+    const filtroPaso = (p.metodo==='arbol' && p.shared) ? `<span class="arrow">→</span><span class="fnum">${p.tras_filtro}</span>` : '';
+    return `<div class="leaf" style="border-left:3px solid ${col}">
+      <span class="store">${STORE_NAME[p.tienda]||p.tienda}</span>
+      <span class="badge ${met.c}">${met.i} ${met.l}</span>${shared}
+      <span class="ruta">${esc(p.detalle)||'—'}</span>
+      <span class="funnel"><span class="fnum" title="crudos">${p.crudos}</span>${filtroPaso}<span class="arrow">→</span><span class="fout ${p.aportados?'':'z'}" title="aportados">${p.aportados}</span></span>
+    </div>`;
+  }
 
-    const maxC = Math.max(1, ...d.traza.flatMap(c=>c.pasos.map(p=>p.crudos)));
-    const out = document.getElementById('out');
-    out.innerHTML = d.traza.map(c=>{
-      const rows = c.pasos.map(p=>{
-        const bcls = p.metodo==='arbol'?'b-arbol':(p.metodo==='error'?'b-error':'b-palabra');
-        const bico = p.metodo==='arbol'?'🌳':(p.metodo==='error'?'⚠️':'🔤');
-        const blab = p.metodo==='arbol'?'árbol':(p.metodo==='error'?'error':'palabra');
-        const shared = p.shared ? '<span class="shared">shared</span>' : '';
-        const col = p.metodo==='arbol'?'var(--arbol)':(p.metodo==='error'?'var(--error)':'var(--palabra)');
-        const w = n => Math.max(3, Math.round(n/maxC*90));
-        const funnel = `<div class="funnel">
-            <span class="fnum" title="crudos que trajo la tienda">${p.crudos}</span>
-            <span class="fbar" style="width:${w(p.crudos)}px;background:${col};opacity:.35"></span>
-            <span class="arrow">→</span>
-            <span class="fnum" title="tras acotar por término">${p.tras_filtro}</span>
-            <span class="arrow">→</span>
-            <span class="fnum ${p.aportados?'':'ap0'}" title="aportados (tras dedupe + exclusiones)" style="color:${p.aportados?'var(--green-d)':''};font-weight:800">${p.aportados}</span>
-          </div>`;
-        return `<tr>
-          <td class="store">${STORE_NAME[p.tienda]||p.tienda}</td>
-          <td><span class="badge ${bcls}">${bico} ${blab}</span>${shared}</td>
-          <td>${funnel}</td>
-          <td class="ruta">${esc(p.detalle)}</td>
-        </tr>`;
-      }).join('');
-      return `<div class="cat">
-        <div class="cat-h">
-          <div class="nm">${CAT_ICON[c.slug]||'🏷️'} ${esc(c.nombre)}</div>
-          <div class="ap">${c.aportados_total} productos aportados</div>
+  function tree(d){
+    const branches = d.traza.map(c=>`
+      <div class="branch">
+        <div class="cat" onclick="this.parentNode.classList.toggle('collapsed')">
+          <span class="caret">▼</span><span class="cico">${CAT_ICON[c.slug]||'🏷️'}</span>
+          <span class="cnm">${esc(c.nombre)}</span>
+          <span class="cterm">${c.terminos.map(esc).join(' · ')}</span>
+          <span class="cpill">${c.aportados_total}</span>
         </div>
-        <div class="cat-meta">términos: ${c.terminos.map(t=>`<code>${esc(t)}</code>`).join(' ')} · ${c.excluir.length} palabras de exclusión</div>
-        <table>
-          <thead><tr><th>Tienda</th><th>Método</th><th>Embudo · crudos → filtro → aportados</th><th>Ruta / términos</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-    }).join('');
+        <div class="leaves">${c.pasos.map(leaf).join('')}</div>
+      </div>`).join('');
+    return `<div class="legend">
+        <span class="lg"><span class="dot" style="background:var(--arbol)"></span>🌳 navega el árbol de categoría</span>
+        <span class="lg"><span class="dot" style="background:var(--palabra)"></span>🔤 busca por palabra</span>
+        <span class="lg"><span class="shared" style="border:none">shared</span> ruta compartida → filtra por término</span>
+      </div>
+      <div class="tree collapsed" id="arbol"><div class="branches">${branches}</div></div>`;
+  }
+
+  function stage(ic, t, d, cls){ return `<div class="stage ${cls||''}"><div class="ic">${ic}</div><div class="body"><div class="t">${t}</div><div class="d">${d}</div></div></div>`; }
+  function conn(pill){ return `<div class="conn"><div class="line"></div>${pill?`<div class="pill">${pill}</div>`:''}<div class="chev">▼</div><div class="line"></div></div>`; }
+
+  function render(d){
+    const totalCrudos = d.traza.reduce((a,c)=>a+c.pasos.reduce((s,p)=>s+p.crudos,0),0);
+    const totalExcl = d.traza.reduce((a,c)=>a+(c.excluir?c.excluir.length:0),0);
+    const cats = d.traza.map(c=>`<span class="chip">${CAT_ICON[c.slug]||''} ${esc(c.nombre)}</span>`).join('');
+    const vistas = CFG.vistas.map(v=>`<code>${v}</code>`).join(' ');
+
+    // Stage Scraper con árbol embebido + toggle
+    const scraperBody = `
+      <div class="stage accent"><div class="ic">🕸️</div><div class="body">
+        <div class="t">3 · Scraper — decide tienda por tienda</div>
+        <div class="d">Para cada categoría consulta las <b>${d.tiendas.length} tiendas</b>. En cada una decide: si conoce la <b>ruta de categoría</b> de esa tienda la navega (🌳), si no, <b>busca por palabra</b> (🔤). Las rutas compartidas se filtran por término.</div>
+        <div class="toggle" onclick="var t=document.getElementById('arbol');t.classList.toggle('collapsed');this.querySelector('.cv').textContent=t.classList.contains('collapsed')?'▸':'▾';">
+          <span class="cv">▸</span> Ver árbol de decisiones (${d.traza.length} categorías × ${d.tiendas.length} tiendas)
+        </div>
+        ${tree(d)}
+      </div></div>`;
+
+    document.getElementById('out').innerHTML = `<div class="flow">
+      ${stage('👤','1 · Configuración — qué se monitorea', `<b>${d.traza.length} categorías</b> activas, cada una con sus términos y palabras de exclusión. Vive en <code>dealbot_categorias</code> (editable sin tocar código).<div class="chips">${cats}</div>`)}
+      ${conn()}
+      ${stage('⏰','2 · Disparo', `Automático por <b>cron 2× al día</b> (${CFG.cron}) o manual desde el dashboard. No consume tokens de IA (scraping puro).`)}
+      ${conn()}
+      ${scraperBody}
+      ${conn(nf(totalCrudos)+' productos crudos')}
+      ${stage('🧹','4 · Procesamiento', `De lo que trae cada tienda: <b>filtra por término</b> (en rutas compartidas), aplica <b>${totalExcl} palabras de exclusión</b> (saca higiene/cosmética/ruido) y hace <b>dedup por EAN</b> (código de barras) para no repetir el mismo producto entre tiendas.`)}
+      ${conn(nf(d.scrapeados)+' productos únicos')}
+      ${stage('🗄️','5 · Base de datos (Supabase)', `Upsert a <code>dealbot_productos</code> y guarda el precio del día en <code>dealbot_precios</code> (histórico). Cada fila lleva su <code>pais</code>.`, 'accent')}
+      ${conn('emparejados por EAN')}
+      ${stage('🔗','6 · Vistas SQL', `Postgres arma en vivo las comparaciones cruzando por código de barras: ${vistas}. Ahí nacen el comparador, el ranking y los movimientos de precio.`)}
+      ${conn()}
+      ${stage('📊','7 · Dashboard', `El usuario ve todo en <code>${CFG.dominio}</code>: comparador, panel de marca, insights.`)}
+      <div class="side">${stage('🔔','Rama · Alertas Telegram', `En paralelo, si detecta caídas de precio manda alerta al bot (conmutable en Configuración). Reglas SQL, sin IA.`)}</div>
+    </div>`;
   }
 </script>
 </body>
