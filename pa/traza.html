@@ -22,7 +22,17 @@
   .runbtn{background:linear-gradient(180deg,var(--green),#25b869);color:#04120a;border:none;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap;box-shadow:0 8px 22px rgba(47,210,122,.28);transition:.15s}
   .runbtn:hover{transform:translateY(-1px)}
   .runbtn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none;transform:none}
-  .status{font-size:13px;color:var(--mut);margin:14px 0 10px;min-height:20px}
+  .addbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin:14px 0 4px}
+  .addbar .lbl{font-size:12.5px;font-weight:800}
+  .addbar input{background:var(--card2);border:1px solid var(--line);border-radius:9px;color:var(--txt);font-size:13px;padding:8px 11px;flex:1;min-width:150px;outline:none}
+  .addbar input:focus{border-color:#3aa564}
+  .addbtn{background:var(--card2);color:var(--green-d);border:1px solid #234d33;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;transition:.12s}
+  .addbtn:hover{background:var(--greenbg)}
+  .addbtn:disabled{opacity:.5;cursor:not-allowed}
+  .addbar .hint{font-size:11px;color:var(--mut);flex-basis:100%}
+  .addbar .hint code{background:var(--card2);border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--green-d)}
+  .status{font-size:13px;color:var(--mut);margin:12px 0 10px;min-height:20px}
+  .status code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11.5px;color:var(--green-d)}
   .status .sp{display:inline-block;animation:spin 1s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -108,6 +118,13 @@
     <button class="runbtn" id="run" onclick="correr()">▶ Correr traza en vivo</button>
   </header>
 
+  <div class="addbar">
+    <span class="lbl">🧪 Categoría nueva:</span>
+    <input id="newcat" placeholder="ej: mayonesa, aceite, galletas, café…" maxlength="50" onkeydown="if(event.key==='Enter')agregarCat()" />
+    <button class="addbtn" id="addbtn" onclick="agregarCat()">＋ Crear con IA y ver</button>
+    <span class="hint">La IA (Opus) genera <code>términos</code> + <code>exclusiones</code>, la agrega al monitoreo y re-corre el flujo para que veas cómo el scraper la mapea. Se crea en la versión <b id="hint-pais">··</b>.</span>
+  </div>
+
   <div class="status" id="status">Este es el flujo del scraper. Tocá <b>“Correr traza en vivo”</b> para verlo activarse con los números reales de una corrida (~20-60s).</div>
   <div id="out"></div>
   <div class="foot" id="foot"></div>
@@ -133,6 +150,7 @@
   const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
   document.getElementById('tag').textContent = CFG.tag;
+  document.getElementById('hint-pais').textContent = CFG.pais;
   document.title = 'Flujo del scraper · DealBot ' + CFG.tag;
   document.getElementById('foot').innerHTML = 'DealBot · Flujo del scraper ' + CFG.pais + '<br/>El árbol dentro de “Scraper” muestra, por categoría y tienda, la decisión (🌳 navegar el árbol de categoría vs 🔤 buscar por palabra) y el embudo crudos → filtro → aportados.';
 
@@ -250,6 +268,25 @@
       st.innerHTML=`✅ Flujo completo en ${((Date.now()-t0)/1000).toFixed(1)}s · ${d.traza.length} categorías · ${nf(d.scrapeados)} productos`;
     }catch(e){ clearInterval(tick); f.classList.remove('running'); st.textContent='No se pudo correr la traza: '+e.message; }
     btn.disabled=false;
+  }
+
+  // ===== agregar categoría nueva con IA y ver cómo se mapea =====
+  async function agregarCat(){
+    const inp=document.getElementById('newcat'), b=document.getElementById('addbtn'), st=document.getElementById('status');
+    const nombre=(inp.value||'').trim(); if(!nombre){ inp.focus(); return; }
+    b.disabled=true; document.getElementById('run').disabled=true;
+    st.innerHTML=`<span class="sp">⏳</span> Creando “${esc(nombre)}” con IA — genera términos y exclusiones…`;
+    try{
+      const r=await fetch(SB+'/dealbot-add-cat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pais:PAIS,nombre})});
+      const d=await r.json();
+      if(!d.ok){ st.innerHTML='⚠️ '+esc(d.error||'No se pudo crear la categoría.'); b.disabled=false; document.getElementById('run').disabled=false; return; }
+      inp.value='';
+      const c=d.categoria;
+      st.innerHTML=`✅ Categoría <b>${esc(c.nombre)}</b> creada · términos: ${c.terminos.map(t=>`<code>${esc(t)}</code>`).join(' ')} · ${c.excluir.length} exclusiones. <b>Corriendo el flujo</b> para ver cómo se rastrea…`;
+      CATS.push({ slug:c.slug, nombre:c.nombre, terminos:c.terminos, excluir:c.excluir });
+      await sleep(1100);
+      correr();
+    }catch(e){ st.textContent='Error: '+e.message; b.disabled=false; document.getElementById('run').disabled=false; }
   }
 
   // al cargar: traer categorias y dibujar el flujo (todo visible, tenue hasta correr)
