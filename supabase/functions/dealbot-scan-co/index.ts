@@ -145,38 +145,49 @@ async function rpc(fn: string, args: any) {
   return await res.json();
 }
 async function getCategorias() {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/dealbot_categorias?activo=eq.true&pais=eq.CO&select=slug,terminos,excluir&order=orden`, { headers: { apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}` } });
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/dealbot_categorias?activo=eq.true&pais=eq.CO&select=slug,nombre,terminos,excluir&order=orden`, { headers: { apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}` } });
   return res.ok ? await res.json() : [];
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const t0 = Date.now();
+  // modo traza: ?explain=1 devuelve el RAZONAMIENTO del scraper (metodo/ruta/conteos por categoria x tienda)
+  // haciendo los fetch reales pero SIN escribir en la BD. Sirve para visualizar como "piensa" cada corrida.
+  const explain = new URL(req.url).searchParams.get("explain") === "1";
   try {
     const cats = await getCategorias();
     if (!cats.length) return new Response(JSON.stringify({ ok: false, error: "sin categorias CO" }), { status: 400, headers: CORS });
     const seen = new Set<string>(); const items: any[] = []; const porCat: any = {}; const porTienda: any = {};
+    const traza: any[] = [];
     for (const cat of cats) {
       const excl = (cat.excluir ?? []).map((e: string) => e.toLowerCase());
       const terminosIncl = (cat.terminos ?? []).map((t: string) => sinAcentos(t.toLowerCase()));
       // Tiendas en SECUENCIA (no Promise.all): parsear varios JSON grandes de VTEX al mismo tiempo
       // agotaba el limite de CPU del edge runtime (WORKER_RESOURCE_LIMIT) con el enfoque concurrente.
       const found: any[] = [];
+      const pasos: any[] = [];   // registro por tienda para la traza
       for (const t of TIENDAS) {
         const mapa = CATEGORY_MAP_CO[t.slug]?.[cat.slug];
         try {
           if (mapa) {
             const items0 = await fetchPorCategoriaCO(t.slug, cat.slug);
-            if (!items0) continue;
-            found.push(...(!mapa.shared ? items0 : items0.filter((it: any) => terminosIncl.some((term: string) => sinAcentos((it.nombre ?? "").toLowerCase()).includes(term)))));
+            if (!items0) { pasos.push({ tienda: t.slug, metodo: "arbol", detalle: mapa.paths.join(", "), shared: !!mapa.shared, crudos: 0, tras_filtro: 0, aportados: 0, nota: "sin datos" }); continue; }
+            const filtrados = !mapa.shared ? items0 : items0.filter((it: any) => terminosIncl.some((term: string) => sinAcentos((it.nombre ?? "").toLowerCase()).includes(term)));
+            found.push(...filtrados);
+            pasos.push({ tienda: t.slug, metodo: "arbol", detalle: mapa.paths.join(", "), shared: !!mapa.shared, crudos: items0.length, tras_filtro: filtrados.length, aportados: 0 });
           } else {
-            for (const term of cat.terminos) found.push(...(await fetchVtexCO(t, term).catch(() => [])));
+            const kw: any[] = [];
+            for (const term of cat.terminos) kw.push(...(await fetchVtexCO(t, term).catch(() => [])));
+            found.push(...kw);
+            pasos.push({ tienda: t.slug, metodo: "palabra", detalle: (cat.terminos ?? []).join(", "), shared: false, crudos: kw.length, tras_filtro: kw.length, aportados: 0 });
           }
-        } catch { /* ignore */ }
+        } catch { pasos.push({ tienda: t.slug, metodo: "error", detalle: "", shared: false, crudos: 0, tras_filtro: 0, aportados: 0 }); }
       }
       const makro = (await Promise.all(cat.terminos.map((term: string) => fetchMakro(term).catch(() => [])))).flat();
       found.push(...makro);
-      let added = 0;
+      pasos.push({ tienda: "makro", metodo: "palabra", detalle: (cat.terminos ?? []).join(", "), shared: false, crudos: makro.length, tras_filtro: makro.length, aportados: 0 });
+      let added = 0; const aportPorTienda: Record<string, number> = {};
       for (const it of found) {
         const nm = (it.nombre ?? "").toLowerCase();
         if (excl.some((e: string) => nm.includes(e))) continue;
@@ -184,9 +195,13 @@ Deno.serve(async (req: Request) => {
         if (seen.has(k)) continue; seen.add(k);
         it.categoria = cat.slug; items.push(it); added++;
         porTienda[it.retailer] = (porTienda[it.retailer] || 0) + 1;
+        aportPorTienda[it.retailer] = (aportPorTienda[it.retailer] || 0) + 1;
       }
       porCat[cat.slug] = added;
+      for (const p of pasos) p.aportados = aportPorTienda[p.tienda] || 0;
+      traza.push({ slug: cat.slug, nombre: cat.nombre ?? cat.slug, terminos: cat.terminos ?? [], excluir: cat.excluir ?? [], aportados_total: added, pasos });
     }
+    if (explain) return new Response(JSON.stringify({ ok: true, pais: "CO", modo: "explain", traza, tiendas: [...TIENDAS.map((t) => t.slug), "makro"], scrapeados: items.length, ms: Date.now() - t0 }), { headers: CORS });
     const guardados = items.length ? await rpc("dealbot_upsert_batch", { items }) : 0;
     return new Response(JSON.stringify({ ok: true, pais: "CO", porCategoria: porCat, porTienda, scrapeados: items.length, guardados, ms: Date.now() - t0 }), { headers: CORS });
   } catch (e) {

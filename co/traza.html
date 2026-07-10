@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Traza del scraper · DealBot CO</title>
+<style>
+  :root{
+    --bg:#eef1ee; --card:#fff; --card2:#f5f7f5; --line:#e2e7e2; --txt:#1a221c; --mut:#6b7770;
+    --green:#15a34a; --green-d:#0f7a37; --greenbg:#e7f6ec;
+    --arbol:#15a34a; --arbolbg:#e7f6ec; --palabra:#2563eb; --palabrabg:#e6efff; --error:#dc2626; --errorbg:#fdecec;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45}
+  .wrap{max-width:1080px;margin:0 auto;padding:26px 18px 60px}
+  header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+  h1{font-size:22px;margin:0 0 3px;letter-spacing:-.4px}
+  h1 .tag{background:var(--green);color:#fff;border-radius:7px;padding:1px 8px;font-size:15px;vertical-align:2px}
+  .sub{color:var(--mut);font-size:13.5px;max-width:640px}
+  .runbtn{background:var(--green);color:#fff;border:none;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap;box-shadow:0 6px 16px rgba(21,163,74,.25);transition:.15s}
+  .runbtn:hover{background:var(--green-d)}
+  .runbtn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+  .status{font-size:13px;color:var(--mut);margin:14px 0 4px;min-height:20px}
+  .status .sp{display:inline-block;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 20px}
+  .lg{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:var(--card)}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .tile .v{font-size:26px;font-weight:800;letter-spacing:-.5px}
+  .tile .l{font-size:12px;color:var(--mut);font-weight:600;margin-top:2px}
+  .cat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.03)}
+  .cat-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+  .cat-h .nm{font-size:17px;font-weight:800;letter-spacing:-.3px}
+  .cat-h .ap{font-size:13px;font-weight:800;color:var(--green-d);background:var(--greenbg);border-radius:999px;padding:3px 11px}
+  .cat-meta{font-size:12px;color:var(--mut);margin-bottom:12px}
+  .cat-meta code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:11.5px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line)}
+  td{padding:9px 8px;border-bottom:1px solid var(--card2);font-size:13px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .store{font-weight:800;text-transform:capitalize}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;border-radius:7px;padding:3px 9px;white-space:nowrap}
+  .b-arbol{background:var(--arbolbg);color:var(--arbol)}
+  .b-palabra{background:var(--palabrabg);color:var(--palabra)}
+  .b-error{background:var(--errorbg);color:var(--error)}
+  .shared{font-size:10px;font-weight:800;color:#b45309;background:#fef3c7;border-radius:5px;padding:1px 6px;margin-left:5px}
+  .ruta{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--mut);word-break:break-all}
+  .funnel{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+  .fbar{height:8px;border-radius:4px;min-width:3px}
+  .fnum{font-variant-numeric:tabular-nums}
+  .arrow{color:var(--line);font-weight:400}
+  .ap0{color:var(--mut)}
+  .empty{text-align:center;color:var(--mut);padding:50px 0;font-size:14px}
+  .foot{margin-top:26px;font-size:12px;color:var(--mut);text-align:center;line-height:1.7}
+  @media(max-width:640px){.tiles{grid-template-columns:repeat(2,1fr)}.ruta{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🧠 Cómo piensa el scraper <span class="tag">CO</span></h1>
+      <div class="sub">Traza en vivo de una corrida de rastreo: por cada categoría y tienda, qué <b>método</b> usa (navegar el árbol de categoría vs. buscar por palabra), qué <b>ruta</b> recorre y cómo filtra los productos hasta lo que aporta. No escribe nada en la base — solo muestra el razonamiento.</div>
+    </div>
+    <button class="runbtn" id="run" onclick="correr()">▶ Correr traza en vivo</button>
+  </header>
+
+  <div class="legend">
+    <span class="lg"><span class="dot" style="background:var(--arbol)"></span> 🌳 Árbol de categoría — navega la ruta real de la tienda</span>
+    <span class="lg"><span class="dot" style="background:var(--palabra)"></span> 🔤 Palabra clave — búsqueda por término</span>
+    <span class="lg"><span class="shared" style="margin:0">shared</span> ruta que agrupa varias categorías (se filtra por término)</span>
+  </div>
+
+  <div class="status" id="status">Tocá <b>“Correr traza en vivo”</b> para ver cómo razona el scraper ahora mismo (tarda ~25s: consulta las 5 tiendas de verdad).</div>
+
+  <div id="tiles" class="tiles" style="display:none"></div>
+  <div id="out"></div>
+
+  <div class="foot">
+    DealBot · Traza del scraper Colombia — Éxito · Carulla · Jumbo · Olímpica · Makro<br/>
+    El embudo <b>crudos → tras filtro → aportados</b> muestra cuántos productos trae la tienda, cuántos quedan tras acotar por término, y cuántos suma tras quitar duplicados y exclusiones.
+  </div>
+</div>
+
+<script>
+  const ENDPOINT = "https://xjkpaxsptfmpkgtymbuu.supabase.co/functions/v1/dealbot-scan-co?explain=1";
+  const CAT_ICON = { atun:'🥫', sardinas:'🐟', vegetales_enlatados:'🥬', duraznos:'🍑', ensaladas:'🥗', comida_mascotas:'🐱', avena:'🥣', harina:'🌾', pasta_tomate:'🍅' };
+  const STORE_NAME = { exito:'Éxito', carulla:'Carulla', jumbo:'Jumbo', olimpica:'Olímpica', makro:'Makro' };
+  const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  async function correr(){
+    const btn = document.getElementById('run'); const st = document.getElementById('status');
+    btn.disabled = true;
+    const t0 = Date.now();
+    let secs = 0; const tick = setInterval(()=>{ secs++; st.innerHTML = `<span class="sp">⏳</span> Corriendo la traza… consultando las tiendas en vivo (${secs}s)`; }, 1000);
+    st.innerHTML = `<span class="sp">⏳</span> Corriendo la traza… consultando las tiendas en vivo`;
+    try{
+      const r = await fetch(ENDPOINT, { method:'POST', headers:{'content-type':'application/json'}, body:'{}' });
+      const d = await r.json();
+      clearInterval(tick);
+      if(!d.ok){ st.textContent = 'Error: ' + (d.error||'respuesta inesperada'); btn.disabled=false; return; }
+      render(d);
+      st.innerHTML = `✅ Traza completa en ${(( Date.now()-t0)/1000).toFixed(1)}s · ${d.traza.length} categorías · ${d.scrapeados} productos que se guardarían`;
+    }catch(e){
+      clearInterval(tick);
+      st.textContent = 'No se pudo correr la traza: ' + e.message;
+    }
+    btn.disabled = false;
+  }
+
+  function render(d){
+    // tiles resumen
+    const nArbol = d.traza.reduce((a,c)=>a + c.pasos.filter(p=>p.metodo==='arbol').length, 0);
+    const nPalabra = d.traza.reduce((a,c)=>a + c.pasos.filter(p=>p.metodo==='palabra').length, 0);
+    const tiles = [
+      ['🗂️', d.traza.length, 'Categorías'],
+      ['🏪', d.tiendas.length, 'Tiendas'],
+      ['🌳', nArbol, 'Rastreos por árbol'],
+      ['📦', d.scrapeados, 'Productos'],
+    ];
+    const tl = document.getElementById('tiles');
+    tl.style.display = 'grid';
+    tl.innerHTML = tiles.map(t=>`<div class="tile"><div class="v">${t[1]}</div><div class="l">${t[0]} ${t[2]}</div></div>`).join('');
+
+    // max crudos para escalar las barras del embudo
+    const maxC = Math.max(1, ...d.traza.flatMap(c=>c.pasos.map(p=>p.crudos)));
+    const out = document.getElementById('out');
+    out.innerHTML = d.traza.map(c=>{
+      const rows = c.pasos.map(p=>{
+        const bcls = p.metodo==='arbol'?'b-arbol':(p.metodo==='error'?'b-error':'b-palabra');
+        const bico = p.metodo==='arbol'?'🌳':(p.metodo==='error'?'⚠️':'🔤');
+        const blab = p.metodo==='arbol'?'árbol':(p.metodo==='error'?'error':'palabra');
+        const shared = p.shared ? '<span class="shared">shared</span>' : '';
+        const col = p.metodo==='arbol'?'var(--arbol)':(p.metodo==='error'?'var(--error)':'var(--palabra)');
+        const w = n => Math.max(3, Math.round(n/maxC*90));
+        const funnel = `<div class="funnel">
+            <span class="fnum" title="crudos que trajo la tienda">${p.crudos}</span>
+            <span class="fbar" style="width:${w(p.crudos)}px;background:${col};opacity:.35"></span>
+            <span class="arrow">→</span>
+            <span class="fnum" title="tras acotar por término">${p.tras_filtro}</span>
+            <span class="arrow">→</span>
+            <span class="fnum ${p.aportados?'':'ap0'}" title="aportados (tras dedupe + exclusiones)" style="color:${p.aportados?'var(--green-d)':''};font-weight:800">${p.aportados}</span>
+          </div>`;
+        return `<tr>
+          <td class="store">${STORE_NAME[p.tienda]||p.tienda}</td>
+          <td><span class="badge ${bcls}">${bico} ${blab}</span>${shared}</td>
+          <td>${funnel}</td>
+          <td class="ruta">${esc(p.detalle)}</td>
+        </tr>`;
+      }).join('');
+      return `<div class="cat">
+        <div class="cat-h">
+          <div class="nm">${CAT_ICON[c.slug]||'🏷️'} ${esc(c.nombre)}</div>
+          <div class="ap">${c.aportados_total} productos aportados</div>
+        </div>
+        <div class="cat-meta">términos: ${c.terminos.map(t=>`<code>${esc(t)}</code>`).join(' ')} · ${c.excluir.length} palabras de exclusión</div>
+        <table>
+          <thead><tr><th>Tienda</th><th>Método</th><th>Embudo · crudos → filtro → aportados</th><th>Ruta / términos</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+  }
+</script>
+</body>
+</html>
