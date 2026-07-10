@@ -62,6 +62,20 @@
   .conn .chev{color:var(--mut);font-size:12px;margin-top:-2px}
   .flow.running .stage{animation:softpulse 1.8s ease-in-out infinite;animation-delay:calc(var(--i)*.16s)}
   @keyframes softpulse{0%,100%{opacity:.6}50%{opacity:1;border-color:#2f6b46}}
+  /* desglose de procesamiento */
+  .procf{margin-top:11px;border:1px solid var(--line);border-radius:10px;overflow:hidden;max-width:440px}
+  .pfr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 12px;font-size:12.5px;border-bottom:1px solid var(--line)}
+  .pfr:last-child{border-bottom:none}
+  .pfr .pl{color:var(--txt)}
+  .pfr .pv{font-weight:800;font-variant-numeric:tabular-nums}
+  .pfr.in{background:var(--card2)}
+  .pfr.drop{color:var(--mut)}
+  .pfr.drop .pv{color:var(--amber)}
+  .pfr.tot{background:var(--greenbg)}
+  .pfr.tot .pl{font-weight:800;color:var(--green-d)}
+  .pfr.tot .pv{color:var(--green-d);font-size:14px}
+  .pfbar{height:5px;background:var(--card2)}
+  .pfbar i{display:block;height:100%;background:var(--green);width:0;transition:width .8s ease}
   .side{margin:6px 0 6px 44px;border-left:2px dashed var(--line);padding-left:16px;position:relative}
   .side::before{content:"";position:absolute;left:-2px;top:-6px;height:26px;width:2px;background:var(--line)}
 
@@ -177,7 +191,11 @@
       ${conn('cn2')}
       ${scraper}
       ${conn('cnCrudos','—')}
-      ${stage('st4','🧹','4 · Procesamiento', `Filtra por término (rutas compartidas), aplica las palabras de <b>exclusión</b> (saca higiene/cosmética/ruido) y hace <b>dedup por EAN</b> (código de barras) para no repetir el mismo producto entre tiendas.`)}
+      <div class="stage" id="st4"><div class="ic">🧹</div><div class="body">
+        <div class="t">4 · Procesamiento</div>
+        <div class="d">De todo lo que trajeron las tiendas: filtra por término (rutas compartidas), aplica las palabras de <b>exclusión</b> (saca higiene/cosmética/ruido) y quita <b>duplicados</b> (el mismo producto traído dos veces). Así llega lo que se guarda.</div>
+        <div id="proc-detail"></div>
+      </div></div>
       ${conn('cnUnicos','—')}
       ${stage('st5','🗄️','5 · Base de datos (Supabase)', `Upsert a <code>dealbot_productos</code> y guarda el precio del día en <code>dealbot_precios</code> (histórico). Cada fila lleva su <code>pais</code>.`,'accent')}
       ${conn('cnEan','por EAN')}
@@ -224,6 +242,25 @@
     tg.querySelector('.cv').textContent='▾';
   }
 
+  function buildProc(d){
+    const crudos = d.traza.reduce((a,c)=>a+c.pasos.reduce((s,p)=>s+p.crudos,0),0);
+    const trasFiltro = d.traza.reduce((a,c)=>a+c.pasos.reduce((s,p)=>s+p.tras_filtro,0),0);
+    const excl = d.traza.reduce((a,c)=>a+(c.excluidos||0),0);
+    const dedup = d.traza.reduce((a,c)=>a+(c.duplicados||0),0);
+    const unicos = d.scrapeados; const dropFiltro = crudos - trasFiltro;
+    const el = document.getElementById('proc-detail');
+    el.innerHTML = `<div class="procf">
+      <div class="pfr in"><span class="pl">📥 Traídos por las tiendas</span><span class="pv">${nf(crudos)}</span></div>
+      <div class="pfr drop"><span class="pl">✂️ Filtro por término (rutas compartidas)</span><span class="pv">−${nf(dropFiltro)}</span></div>
+      <div class="pfr drop"><span class="pl">🚫 Palabras de exclusión (higiene/ruido)</span><span class="pv">−${nf(excl)}</span></div>
+      <div class="pfr drop"><span class="pl">♻️ Duplicados (mismo producto repetido)</span><span class="pv">−${nf(dedup)}</span></div>
+      <div class="pfr tot"><span class="pl">✅ Productos únicos que se guardan</span><span class="pv" id="proc-tot">0</span></div>
+      <div class="pfbar"><i></i></div>
+    </div>`;
+    countUp('#proc-tot', unicos);
+    requestAnimationFrame(()=>{ const bar=el.querySelector('.pfbar i'); if(bar) bar.style.width = Math.round(unicos/Math.max(1,crudos)*100)+'%'; });
+  }
+
   function countUp(sel, target){
     const el = document.querySelector(sel); if(!el) return;
     const dur=800, t0=performance.now();
@@ -241,7 +278,7 @@
     lit('cn2'); await sleep(220);
     lit('st3'); buildTree(d); await sleep(500);
     lit('cnCrudos'); countUp('#cnCrudos .n', totalCrudos); document.querySelector('#cnCrudos .n').insertAdjacentHTML('afterend',' crudos'); await sleep(500);
-    lit('st4'); await sleep(360);
+    lit('st4'); buildProc(d); await sleep(600);
     lit('cnUnicos'); countUp('#cnUnicos .n', d.scrapeados); document.querySelector('#cnUnicos .n').insertAdjacentHTML('afterend',' únicos'); await sleep(500);
     lit('st5'); await sleep(360);
     lit('cnEan'); await sleep(280);

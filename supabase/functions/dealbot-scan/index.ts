@@ -426,17 +426,17 @@ async function construirTraza(cats: any[]) {
       } catch { return { items: [], paso: { tienda: retailer, metodo: "error", detalle: "", shared: false, crudos: 0, tras_filtro: 0, aportados: 0 } }; }
     }));
     const found = perStore.flatMap((s) => s.items); const pasos = perStore.map((s) => s.paso);
-    let added = 0; const apt: Record<string, number> = {};
+    let added = 0, nExcl = 0, nDedup = 0; const apt: Record<string, number> = {};
     for (const it of found) {
       const nm = (it.nombre ?? "").toLowerCase();
-      if (excl.some((e: string) => nm.includes(e))) continue;
+      if (excl.some((e: string) => nm.includes(e))) { nExcl++; continue; }
       const k = it.retailer + "|" + it.product_id;
-      if (seen.has(k)) continue; seen.add(k);
+      if (seen.has(k)) { nDedup++; continue; } seen.add(k);
       added++; apt[it.retailer] = (apt[it.retailer] || 0) + 1;
     }
     for (const p of pasos) p.aportados = apt[p.tienda] || 0;
     scrapeados += added;
-    traza.push({ slug: cat.slug, nombre: cat.nombre ?? cat.slug, terminos: cat.terminos ?? [], excluir: cat.excluir ?? [], aportados_total: added, pasos });
+    traza.push({ slug: cat.slug, nombre: cat.nombre ?? cat.slug, terminos: cat.terminos ?? [], excluir: cat.excluir ?? [], aportados_total: added, excluidos: nExcl, duplicados: nDedup, pasos });
   }
   return { traza, scrapeados };
 }

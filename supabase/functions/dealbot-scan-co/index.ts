@@ -187,19 +187,19 @@ Deno.serve(async (req: Request) => {
       const makro = (await Promise.all(cat.terminos.map((term: string) => fetchMakro(term).catch(() => [])))).flat();
       found.push(...makro);
       pasos.push({ tienda: "makro", metodo: "palabra", detalle: (cat.terminos ?? []).join(", "), shared: false, crudos: makro.length, tras_filtro: makro.length, aportados: 0 });
-      let added = 0; const aportPorTienda: Record<string, number> = {};
+      let added = 0, nExcl = 0, nDedup = 0; const aportPorTienda: Record<string, number> = {};
       for (const it of found) {
         const nm = (it.nombre ?? "").toLowerCase();
-        if (excl.some((e: string) => nm.includes(e))) continue;
+        if (excl.some((e: string) => nm.includes(e))) { nExcl++; continue; }
         const k = it.retailer + "|" + it.product_id;
-        if (seen.has(k)) continue; seen.add(k);
+        if (seen.has(k)) { nDedup++; continue; } seen.add(k);
         it.categoria = cat.slug; items.push(it); added++;
         porTienda[it.retailer] = (porTienda[it.retailer] || 0) + 1;
         aportPorTienda[it.retailer] = (aportPorTienda[it.retailer] || 0) + 1;
       }
       porCat[cat.slug] = added;
       for (const p of pasos) p.aportados = aportPorTienda[p.tienda] || 0;
-      traza.push({ slug: cat.slug, nombre: cat.nombre ?? cat.slug, terminos: cat.terminos ?? [], excluir: cat.excluir ?? [], aportados_total: added, pasos });
+      traza.push({ slug: cat.slug, nombre: cat.nombre ?? cat.slug, terminos: cat.terminos ?? [], excluir: cat.excluir ?? [], aportados_total: added, excluidos: nExcl, duplicados: nDedup, pasos });
     }
     if (explain) return new Response(JSON.stringify({ ok: true, pais: "CO", modo: "explain", traza, tiendas: [...TIENDAS.map((t) => t.slug), "makro"], scrapeados: items.length, ms: Date.now() - t0 }), { headers: CORS });
     const guardados = items.length ? await rpc("dealbot_upsert_batch", { items }) : 0;
