@@ -711,7 +711,7 @@
     <div class="sheet">
       <button class="x" onclick="cerrar('ov-sim')">✕</button>
       <h2>🧮 Simulador de presupuesto</h2>
-      <div class="ph" style="font-size:11px;color:var(--mut);margin-bottom:10px">¿Cuánto rinde tu dinero en cada supermercado? Elegí las categorías a incluir (precio por unidad).</div>
+      <div class="ph" style="font-size:11px;color:var(--mut);margin-bottom:10px">¿Cuánto <b>producto</b> te llevás por tu presupuesto en cada supermercado? Compara por peso real (kg y $/100g), no solo por cantidad de envases. Elegí las categorías a incluir.</div>
       <input id="sim-monto" type="number" min="1" placeholder="Tengo $…" value="50" oninput="simular()" style="width:100%;margin-bottom:10px" />
       <div id="sim-cats" class="simcats"></div>
       <div id="sim-res"></div>
@@ -1157,32 +1157,49 @@
     else simCats.add(slug);
     pintarSimCats(); simular();
   }
+  const kgTxt = g => g>=1000 ? (g/1000).toFixed(g>=10000?0:1)+' kg' : Math.round(g)+' g';
   function simular(){
     const monto = Number(document.getElementById('sim-monto').value)||0;
     const fuente = (compAll||compData).filter(d=>simCats.size ? simCats.has(d.categoria) : true);
+    // por tienda: comprar los mas baratos hasta el monto, y ademas medir CUANTO PRODUCTO (gramos) te llevas
     const res = TIENDAS_CAMPO.map(([ret,campo])=>{
-      const precios = fuente.map(d=>Number(d[campo])).filter(p=>p>0).sort((a,b)=>a-b);
-      let suma=0,n=0;
-      for(const p of precios){ if(suma+p<=monto){ suma+=p; n++; } }
-      return { ret, n, suma };
-    }).filter(t=>t.n>0).sort((a,b)=>b.n-a.n || a.suma-b.suma);
+      const items = fuente.map(d=>({ p:Number(d[campo]), nombre:d.nombre, g:gramajeG(d.nombre)||0 }))
+        .filter(x=>x.p>0).sort((a,b)=>a.p-b.p);
+      let suma=0,n=0,gramos=0; const bought=[];
+      for(const it of items){ if(suma+it.p<=monto){ suma+=it.p; n++; if(it.g>0) gramos+=it.g; bought.push(it); } }
+      return { ret, n, suma, gramos, bought, sobra:monto-suma, p100: gramos>0 ? suma/gramos*100 : null };
+    }).filter(t=>t.n>0);
     if(!res.length){ document.getElementById('sim-res').innerHTML='<div class="empty">Ingresá un monto para simular.</div>'; return; }
-    const best=res[0], alt=res[1];
+    // #2: rankear por VALOR (gramos que te llevas), no por cantidad de envases; si no hay gramaje, por cantidad
+    const hayGramos = res.some(t=>t.gramos>0);
+    res.sort(hayGramos ? (a,b)=>b.gramos-a.gramos || b.n-a.n : (a,b)=>b.n-a.n || a.suma-b.suma);
+    const best=res[0], alt=res[1], worst=res[res.length-1];
+    // #1: reformular como AHORRO / valor real
+    const pctMas = (hayGramos && worst.gramos>0 && best.gramos>worst.gramos) ? Math.round((best.gramos/worst.gramos-1)*100) : 0;
+    const valLine = hayGramos
+      ? `💡 Con ${money(monto)} te llevás ≈ <b>${kgTxt(best.gramos)}</b> de producto${pctMas>0?` — <b>${pctMas}% más</b> que en la tienda que menos rinde (${tiendaNombre[worst.ret]||worst.ret}, ${kgTxt(worst.gramos)})`:''}.`
+      : `💡 Con ${money(monto)} entran <b>${best.n} productos</b> en ${tiendaNombre[best.ret]||best.ret}.`;
     const card = `<div class="bestopt">
-        <div class="bo-l">🏆 Mejor opción para tu presupuesto</div>
+        <div class="bo-l">🏆 ${hayGramos?'Más producto por tu presupuesto':'Mejor opción para tu presupuesto'}</div>
         <div class="bo-store">${tiendaNombre[best.ret]||best.ret}</div>
         <div class="bo-grid">
-          <div><div class="bo-v">${best.n}</div><div class="bo-k">productos posibles</div></div>
-          <div><div class="bo-v">$${best.suma.toFixed(2)}</div><div class="bo-k">total estimado</div></div>
-          <div><div class="bo-v">$${(monto-best.suma).toFixed(2)}</div><div class="bo-k">te sobra</div></div>
+          ${hayGramos?`<div><div class="bo-v">≈${kgTxt(best.gramos)}</div><div class="bo-k">producto que te llevás</div></div>`:''}
+          <div><div class="bo-v">${best.n}</div><div class="bo-k">productos</div></div>
+          <div><div class="bo-v">${money(best.suma)}</div><div class="bo-k">total · sobra ${money(best.sobra)}</div></div>
+          ${best.p100!=null?`<div><div class="bo-v">${money(best.p100)}</div><div class="bo-k">por 100g (prom.)</div></div>`:''}
         </div>
-        ${alt?`<div class="bo-alt">Mejor alternativa: <b>${tiendaNombre[alt.ret]||alt.ret}</b> — ${alt.n} productos · $${alt.suma.toFixed(2)}</div>`:''}
+        <div class="bo-alt">${valLine}</div>
+        ${alt?`<div class="bo-alt">Mejor alternativa: <b>${tiendaNombre[alt.ret]||alt.ret}</b> — ${hayGramos?`≈${kgTxt(alt.gramos)} · `:''}${alt.n} productos · ${money(alt.suma)}</div>`:''}
       </div>`;
     const lista = res.map((t,i)=>
       `<div class="row2 ${i===0?'win':''}" style="margin-bottom:6px">
          <span>${i===0?'🏆 ':''}${tiendaNombre[t.ret]||t.ret}</span>
-         <span><b>${t.n}</b> productos · $${t.suma.toFixed(2)}</span></div>`).join("");
-    document.getElementById('sim-res').innerHTML = card + lista;
+         <span>${t.gramos>0?`<b>≈${kgTxt(t.gramos)}</b> · `:''}${t.n} prod${t.p100!=null?` · ${money(t.p100)}/100g`:''} · ${money(t.suma)}</span></div>`).join("");
+    const boughtList = best.bought.slice(0,40).map(it=>
+      `<div class="cbk-item"><span>${it.nombre}${it.g>0?` <span style="color:var(--mut)">${kgTxt(it.g)}</span>`:''}</span><b>${money(it.p)}</b></div>`).join('')
+      + (best.bought.length>40 ? `<div class="cbk-item" style="color:var(--mut)">…y ${best.bought.length-40} productos más</div>` : '');
+    const detalle = `<details class="cbk" style="margin-top:8px"><summary><span>Ver qué llevás en ${tiendaNombre[best.ret]||best.ret}</span><span>${best.n} productos</span></summary><div class="cbk-detail">${boughtList}</div></details>`;
+    document.getElementById('sim-res').innerHTML = card + lista + detalle;
   }
 
   // ===== Comparador de marcas (P5) =====
