@@ -187,6 +187,11 @@
   .chart-scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
   .chart-scroll::-webkit-scrollbar-thumb:hover{background:var(--mut)}
   .chart-inner{position:relative}
+  /* Panel Evolución: que el gráfico llene el alto del panel (evita el hueco en blanco del grid) */
+  .evo-panel{display:flex;flex-direction:column}
+  .evo-panel #infl-box{flex:1;min-height:210px;position:relative;display:flex;flex-direction:column;justify-content:center}
+  .evo-panel #infl-box .chart-scroll{position:absolute;inset:0}
+  .evo-panel #infl-box .chart-inner{height:100%!important}
   .ecstats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
   .ecstat{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
   .ecstat .v{font-size:16px;font-weight:800;letter-spacing:-.3px}
@@ -649,7 +654,7 @@
         <div class="ph" id="rank-ph">Qué tan barata es cada tienda en esta categoría (1.00 = siempre la más barata)</div>
         <div id="rank-list"></div>
       </div>
-      <div class="panel">
+      <div class="panel evo-panel">
         <h3><i data-lucide="trending-up"></i>Evolución de precio</h3>
         <div class="ph">Índice de toda la categoría, o elegí un producto para ver su historia por tienda · si hay mucha historia, <b>deslizá</b> el gráfico para ver hacia atrás</div>
         <select id="infl-sel" onchange="graficoIndice(this.value)" style="width:100%;margin-bottom:10px"></select>
