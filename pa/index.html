@@ -279,7 +279,7 @@
   .bestopt{background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
   .bestopt .bo-l{font-size:10px;text-transform:uppercase;letter-spacing:.5px;opacity:.9;font-weight:700}
   .bestopt .bo-store{font-size:22px;font-weight:800;margin:2px 0 10px;letter-spacing:-.4px}
-  .bestopt .bo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .bestopt .bo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px}
   .bestopt .bo-v{font-size:17px;font-weight:800}
   .bestopt .bo-k{font-size:10px;opacity:.85;font-weight:600}
   .bestopt .bo-alt{font-size:11px;opacity:.92;margin-top:10px;border-top:1px solid rgba(255,255,255,.25);padding-top:8px}
@@ -287,6 +287,8 @@
   .simcats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
   .simchip{border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;user-select:none;transition:.15s}
   .simchip.on{border-color:var(--green);background:var(--greenbg);color:var(--green-d)}
+  .simlbl{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:800;margin:2px 0 6px}
+  .simchip .sd{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0}
   /* comparador VS: frase resumen */
   .vsfrase{background:var(--greenbg);color:var(--green-d);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px;text-align:center;font-weight:600;line-height:1.4}
   .altipo{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--mut);margin-left:4px}
@@ -713,7 +715,10 @@
       <h2>🧮 Simulador de presupuesto</h2>
       <div class="ph" style="font-size:11px;color:var(--mut);margin-bottom:10px">¿Cuánto <b>producto</b> te llevás por tu presupuesto en cada supermercado? Compara por peso real (kg y $/100g), no solo por cantidad de envases. Elegí las categorías a incluir.</div>
       <input id="sim-monto" type="number" min="1" placeholder="Tengo $…" value="50" oninput="simular()" style="width:100%;margin-bottom:10px" />
+      <div class="simlbl">Categorías a incluir</div>
       <div id="sim-cats" class="simcats"></div>
+      <div class="simlbl">Tiendas a comparar</div>
+      <div id="sim-tiendas" class="simcats"></div>
       <div id="sim-res"></div>
     </div>
   </div>
@@ -1136,7 +1141,7 @@
 
   // ===== Simulador de presupuesto (P5) — multi-categoría =====
   const TIENDAS_CAMPO = CFG.tiendas.map(t=>[t[0],t[1]]);
-  let compAll = null; const simCats = new Set();
+  let compAll = null; const simCats = new Set(); const simTiendas = new Set();
   function abrirSim(){ abrir('ov-sim'); cargarSimYrender(); }
   async function cargarSimYrender(){
     if(!compAll){
@@ -1144,8 +1149,9 @@
       const { data } = await sb.from(CFG.v.comparador).select("*");
       compAll = data || [];
     }
-    if(simCats.size===0) CATS.forEach(c=>simCats.add(c.slug));   // todas activas por defecto
-    pintarSimCats(); simular();
+    if(simCats.size===0) CATS.forEach(c=>simCats.add(c.slug));          // todas las categorías por defecto
+    if(simTiendas.size===0) CFG.tiendas.forEach(t=>simTiendas.add(t[0])); // todas las tiendas por defecto
+    pintarSimCats(); pintarSimTiendas(); simular();
   }
   function pintarSimCats(){
     document.getElementById('sim-cats').innerHTML = CATS.map(c=>
@@ -1157,12 +1163,23 @@
     else simCats.add(slug);
     pintarSimCats(); simular();
   }
+  function pintarSimTiendas(){
+    document.getElementById('sim-tiendas').innerHTML = CFG.tiendas.map(t=>{
+      const slug=t[0], on=simTiendas.has(slug);
+      return `<span class="simchip ${on?'on':''}" onclick="toggleSimTienda('${slug}')"><span class="sd" style="background:${COLORS[slug]||'var(--green)'}"></span>${tiendaNombre[slug]||slug}</span>`;
+    }).join('');
+  }
+  function toggleSimTienda(slug){
+    if(simTiendas.has(slug)){ if(simTiendas.size>1) simTiendas.delete(slug); }  // dejar al menos 1
+    else simTiendas.add(slug);
+    pintarSimTiendas(); simular();
+  }
   const kgTxt = g => g>=1000 ? (g/1000).toFixed(g>=10000?0:1)+' kg' : Math.round(g)+' g';
   function simular(){
     const monto = Number(document.getElementById('sim-monto').value)||0;
     const fuente = (compAll||compData).filter(d=>simCats.size ? simCats.has(d.categoria) : true);
     // por tienda: comprar los mas baratos hasta el monto, y ademas medir CUANTO PRODUCTO (gramos) te llevas
-    const res = TIENDAS_CAMPO.map(([ret,campo])=>{
+    const res = TIENDAS_CAMPO.filter(([ret])=>simTiendas.has(ret)).map(([ret,campo])=>{
       const items = fuente.map(d=>({ p:Number(d[campo]), nombre:d.nombre, g:gramajeG(d.nombre)||0 }))
         .filter(x=>x.p>0).sort((a,b)=>a.p-b.p);
       let suma=0,n=0,gramos=0; const bought=[];
