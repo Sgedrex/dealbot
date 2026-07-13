@@ -646,7 +646,7 @@
       </div>
       <div class="panel">
         <h3><i data-lucide="trending-up"></i>Evolución de precio</h3>
-        <div class="ph">Índice de toda la categoría, o elegí un producto para ver su historia por tienda</div>
+        <div class="ph">Índice de toda la categoría, o elegí un producto para ver su historia por tienda · <b>arrastrá</b> para ver hacia atrás, rueda para acercar, doble clic para ver todo</div>
         <select id="infl-sel" onchange="graficoIndice(this.value)" style="width:100%;margin-bottom:10px"></select>
         <div id="infl-box"><canvas id="chart-infl" height="170"></canvas></div>
       </div>
@@ -787,6 +787,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script type="module">
   import { animate, stagger } from "https://cdn.jsdelivr.net/npm/motion@10.18.0/+esm";
   window.Motion = { animate, stagger };
@@ -963,11 +965,19 @@
       : '<div class="empty">Sin descuentos activos en esta categoría. Las alertas de subida/bajada aparecerán cuando haya varios días de historia.</div>';
 
     // movimientos de precio (Eje 1 — histórico)
-    const mrow = (m, sube) => `<div class="alrow" style="cursor:pointer" onclick="verHistorico('${(m.ean||'').replace(/'/g,'')}')" title="Ver histórico de precio (pasó de ${money(m.inicial)} a ${money(m.actual)})"><span class="nm">${nombreLimpio(m.nombre)}</span>
+    // Nombre CANÓNICO = el que el producto tiene en la lista/comparador (mismo EAN), no el nombre
+    // suelto de la tienda donde cambió el precio. Así el usuario encuentra el producto en el selector.
+    const nombrePorEan = new Map(compData.map(d=>[String(d.ean), d.nombre]));
+    const mrow = (m, sube) => `<div class="alrow" style="cursor:pointer" onclick="verHistorico('${(m.ean||'').replace(/'/g,'')}')" title="Ver histórico de precio (pasó de ${money(m.inicial)} a ${money(m.actual)})"><span class="nm">${nombreLimpio(nombrePorEan.get(String(m.ean)) || m.nombre)}</span>
         <span class="chip ${chipClass(m.retailer)}" style="margin:0 6px">${tn(m.retailer)}</span>
         <span class="savechip" style="${sube?'background:#fee2e2;color:#b91c1c':''}">${money(m.inicial)}→${money(m.actual)} ${sube?'+':'−'}${Math.abs(Number(m.cambio_pct)).toFixed(0)}%</span></div>`;
-    const baja = movData.filter(m=>Number(m.cambio_pct)<0).sort((a,b)=>Number(a.cambio_pct)-Number(b.cambio_pct)).slice(0,7);
-    const sube = movData.filter(m=>Number(m.cambio_pct)>0).sort((a,b)=>Number(b.cambio_pct)-Number(a.cambio_pct)).slice(0,7);
+    // solo productos visibles en la lista/comparador (emparejados en 2+ tiendas): evita mostrar
+    // en la alerta un producto de una sola tienda que el usuario no encuentra en el selector.
+    // umbral ±0.5%: ignora movimientos de centavos que redondean a 0% (ruido, ej. $6.84→$6.85)
+    const eansVisibles = new Set(nombrePorEan.keys());
+    const movVis = movData.filter(m=>eansVisibles.has(String(m.ean)));
+    const baja = movVis.filter(m=>Number(m.cambio_pct)<=-0.5).sort((a,b)=>Number(a.cambio_pct)-Number(b.cambio_pct)).slice(0,7);
+    const sube = movVis.filter(m=>Number(m.cambio_pct)>=0.5).sort((a,b)=>Number(b.cambio_pct)-Number(a.cambio_pct)).slice(0,7);
     document.getElementById('mov-baja').innerHTML = baja.length ? baja.map(m=>mrow(m,false)).join('') : '<div class="empty">Sin bajas registradas aún — aparecerán al acumular más días.</div>';
     document.getElementById('mov-sube').innerHTML = sube.length ? sube.map(m=>mrow(m,true)).join('') : '<div class="empty">Sin subas registradas aún.</div>';
     // aviso si todavía no hay 7 días completos de historial (el fallback compara desde el primer registro)
@@ -1013,6 +1023,21 @@
     dibujarIndice();
   }
   function graficoIndice(ean){ if(ean) dibujarHistProd(ean); else dibujarIndice(); }
+  // Paneo/zoom horizontal para ver la tendencia "desde atrás" (arrastrar) sin perder el eje Y
+  const PAN_VENTANA = 14; // puntos/días visibles por defecto cuando hay más historia
+  function zoomPlugin(){
+    return { pan:{ enabled:true, mode:'x' }, zoom:{ wheel:{enabled:true}, pinch:{enabled:true}, mode:'x' }, limits:{ x:{ min:'original', max:'original' } } };
+  }
+  // ventana inicial para eje de categorías (índice general): muestra los últimos N y deja panear hacia atrás
+  function ventanaCat(n){ return n>PAN_VENTANA ? { min:n-PAN_VENTANA, max:n-1 } : {}; }
+  // ventana inicial para eje lineal por tiempo (histórico por tienda)
+  function ventanaTime(ds){
+    const xs = ds.flatMap(d=>d.data.map(p=>p.x)); if(!xs.length) return {};
+    const maxX=Math.max(...xs), minX=Math.min(...xs), win=PAN_VENTANA*864e5;
+    return (maxX-minX>win) ? { min:maxX-win, max:maxX } : {};
+  }
+  // doble clic = volver a ver todo
+  function resetZoomDbl(canvas, chart){ if(canvas) canvas.ondblclick=()=>{ try{ chart.resetZoom(); }catch(e){} }; }
   function dibujarIndice(){
     const box = document.getElementById('infl-box');
     if(inflData.length < 2){
@@ -1033,12 +1058,15 @@
     const labels = inflData.map(d=>{ const p=(d.periodo||'').slice(0,10).split('-'); return new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('es-PA',{day:'2-digit',month:'short'}); });
     const vals = inflData.map(d=>Number(d.precio_promedio));
     if(chartInfl) chartInfl.destroy();
-    chartInfl = new Chart(document.getElementById('chart-infl'), {
+    const winI = ventanaCat(labels.length);
+    const cvI = document.getElementById('chart-infl');
+    chartInfl = new Chart(cvI, {
       type:'line',
       data:{ labels, datasets:[{ label:'Precio promedio', data:vals, borderColor:'#15a34a', backgroundColor:'rgba(21,163,74,.12)', fill:true, tension:.3, pointRadius:4 }] },
-      options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+Number(c.parsed.y).toFixed(2)}}},
-        scales:{ y:{ ticks:{ callback:v=>'$'+Number(v).toFixed(2) } } } }
+      options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'$'+Number(c.parsed.y).toFixed(2)}}, zoom:zoomPlugin()},
+        scales:{ x:{ min:winI.min, max:winI.max }, y:{ ticks:{ callback:v=>'$'+Number(v).toFixed(2) } } } }
     });
+    resetZoomDbl(cvI, chartInfl);
   }
   async function dibujarHistProd(ean){
     const box = document.getElementById('infl-box');
@@ -1056,11 +1084,14 @@
     if(chartInfl){ chartInfl.destroy(); chartInfl=null; }
     if(!ds.length){ box.innerHTML='<div class="empty">Sin histórico para este producto todavía — se acumula con cada actualización.</div>'; return; }
     box.innerHTML = '<canvas id="chart-infl" height="170"></canvas>';
-    chartInfl = new Chart(document.getElementById('chart-infl'), {
+    const winH = ventanaTime(ds);
+    const cvH = document.getElementById('chart-infl');
+    chartInfl = new Chart(cvH, {
       type:'line', data:{ datasets: ds },
-      options:{ parsing:false, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleDateString('es-PA',{day:'2-digit',month:'short',timeZone:'UTC'}):'',label:c=>c.dataset.label+': $'+Number(c.parsed.y).toFixed(2)}}},
-        scales:{ x:{ type:'linear', ticks:{ maxTicksLimit:8, callback:v=>new Date(v).toLocaleDateString('es-PA',{day:'2-digit',month:'short',timeZone:'UTC'}) } }, y:{ ticks:{ callback:v=>'$'+Number(v).toFixed(2) } } } }
+      options:{ parsing:false, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleDateString('es-PA',{day:'2-digit',month:'short',timeZone:'UTC'}):'',label:c=>c.dataset.label+': $'+Number(c.parsed.y).toFixed(2)}}, zoom:zoomPlugin()},
+        scales:{ x:{ type:'linear', min:winH.min, max:winH.max, ticks:{ maxTicksLimit:8, callback:v=>new Date(v).toLocaleDateString('es-PA',{day:'2-digit',month:'short',timeZone:'UTC'}) } }, y:{ ticks:{ callback:v=>'$'+Number(v).toFixed(2) } } } }
     });
+    resetZoomDbl(cvH, chartInfl);
   }
 
   // ===== Histórico por producto =====
@@ -1085,13 +1116,16 @@
       borderDash: esMayorista(ret)?[6,4]:[]
     }));
     if(chartHist) chartHist.destroy();
-    chartHist = new Chart(document.getElementById('chart-hist'), {
+    const winV = ventanaTime(ds);
+    const cvV = document.getElementById('chart-hist');
+    chartHist = new Chart(cvV, {
       type:'line',
       data:{ datasets: ds },
-      options:{ parsing:false, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleDateString('es-PA',{day:'2-digit',month:'short',timeZone:'UTC'}):'',label:c=>c.dataset.label+': $'+Number(c.parsed.y).toFixed(2)}}},
-        scales:{ x:{ type:'linear', ticks:{ maxTicksLimit:8, callback:function(v){ return new Date(v).toLocaleDateString('es-PA',{day:'2-digit',month:'short',timeZone:'UTC'}); } } },
+      options:{ parsing:false, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleDateString('es-PA',{day:'2-digit',month:'short',timeZone:'UTC'}):'',label:c=>c.dataset.label+': $'+Number(c.parsed.y).toFixed(2)}}, zoom:zoomPlugin()},
+        scales:{ x:{ type:'linear', min:winV.min, max:winV.max, ticks:{ maxTicksLimit:8, callback:function(v){ return new Date(v).toLocaleDateString('es-PA',{day:'2-digit',month:'short',timeZone:'UTC'}); } } },
                  y:{ ticks:{ callback:v=>'$'+Number(v).toFixed(2) } } } }
     });
+    resetZoomDbl(cvV, chartHist);
   }
 
   // ===== Canasta =====
