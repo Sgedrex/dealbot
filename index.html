@@ -1201,9 +1201,27 @@
   function abrirSim(){ abrir('ov-sim'); cargarSimYrender(); }
   async function cargarSimYrender(){
     if(!compAll){
-      document.getElementById('sim-res').innerHTML = '<div class="empty">Cargando catálogo de todas las categorías…</div>';
-      const { data } = await sb.from(CFG.v.comparador).select("*");
-      compAll = data || [];
+      const boxSim = document.getElementById('sim-res');
+      // Traer POR categoría (la vista completa sin filtro excede el statement_timeout de 3s del anon → 500).
+      // Con CONCURRENCIA LIMITADA (pool de 3): disparar las ~14 a la vez también satura el anon y todas
+      // se pasan del timeout; individualmente cada una entra en ~0.7s.
+      const slugs = (CATS && CATS.length) ? CATS.map(c=>c.slug) : (compData.length?[...new Set(compData.map(d=>d.categoria))]:[]);
+      const partes = []; let idx = 0, hechas = 0;
+      const traer = async () => {
+        while(idx < slugs.length){
+          const i = idx++;
+          const r = await sb.from(CFG.v.comparador).select("*").eq("categoria",slugs[i]).then(x=>x.data||[]).catch(()=>[]);
+          partes[i] = r; hechas++;
+          boxSim.innerHTML = `<div class="empty">Cargando catálogo… ${hechas}/${slugs.length} categorías</div>`;
+        }
+      };
+      await Promise.all(Array.from({length:Math.min(3, slugs.length)}, traer));
+      // reintento secuencial (1 a la vez) de las categorías que quedaron vacías por timeout intermitente
+      for(let i=0;i<slugs.length;i++){
+        if(partes[i] && partes[i].length) continue;
+        partes[i] = await sb.from(CFG.v.comparador).select("*").eq("categoria",slugs[i]).then(x=>x.data||[]).catch(()=>[]);
+      }
+      compAll = partes.flat();
     }
     if(simCats.size===0) CATS.forEach(c=>simCats.add(c.slug));          // todas las categorías por defecto
     if(simTiendas.size===0) CFG.tiendas.forEach(t=>simTiendas.add(t[0])); // todas las tiendas por defecto
